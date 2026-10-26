@@ -1,6 +1,6 @@
 # MAK(e) It Happen Events, LLC
 
-Landing page for MAK(e) It Happen Events, LLC — event production and day-of coordination in Dallas–Fort Worth and Houston.
+Landing page for MAK(e) It Happen Events, LLC — event production and day-of coordination across Dallas–Fort Worth.
 
 **Live site:** https://mkahan17.github.io/Mak-e-It-Happen-Events-LLC/
 
@@ -18,11 +18,11 @@ Landing page for MAK(e) It Happen Events, LLC — event production and day-of co
 - `index.html` is fully self-contained: every photo, font, and script is embedded, so there are no broken links and nothing else to upload.
 - `.nojekyll` tells GitHub Pages to serve the file as-is (no Jekyll processing). Keep it.
 - To use a custom domain, add a `CNAME` file containing your domain and configure it under Settings → Pages → Custom domain.
-- Inquiries come in through the "Check my date" form (emailed to Gmail), or by text or email — buttons link to `sms:` and `mailto:`.
+- Inquiries come in through the "Check my date" form (emailed to makeithappenevents.dfw@gmail.com), or by text or email — buttons link to `sms:` and `mailto:`.
 
 ## Contact
 
 Makenzie Kahan
-Email: makenzie.kahan17@gmail.com
+Email: makeithappenevents.dfw@gmail.com
 Phone/text: 817-458-8699
 Instagram: @makenzie_kahan
