@@ -25,4 +25,4 @@ Landing page for MAK(e) It Happen Moments, LLC — event production and day-of c
 Makenzie Kahan
 Email: makeithappenevents.dfw@gmail.com
 Phone/text: 817-458-8699
-Instagram: @makenzie_kahan
+Instagram: @mak.ithappenmoments
