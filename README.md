@@ -1,6 +1,6 @@
-# MAK(e) It Happen Events, LLC
+# MAK(e) It Happen Moments, LLC
 
-Landing page for MAK(e) It Happen Events, LLC — event production and day-of coordination across Dallas–Fort Worth.
+Landing page for MAK(e) It Happen Moments, LLC — event production and day-of coordination across Dallas–Fort Worth.
 
 **Live site:** https://mkahan17.github.io/Mak-e-It-Happen-Events-LLC/
 
