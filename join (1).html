@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Join the Team | MAK(e) It Happen Moments</title>
+<meta name="description" content="Work events with MAK(e) It Happen Moments as a 1099 contractor. Fill out and sign the Independent Contractor Agreement online.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap">
+<style>
+  :root { --gold:#4FC9C0; --bg:#1B1F23; --panel:#22272B; --field:#1F2427; --ink:#F4F7F7; --muted:#C3C9CA; --line:rgba(244,247,247,0.14); --bad:#F2685C; }
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:'DM Sans',system-ui,sans-serif; -webkit-font-smoothing:antialiased; line-height:1.55; }
+  a { color:var(--gold); }
+  .wrap { max-width:880px; margin:0 auto; padding:0 16px; }
+  header.top { border-bottom:1px solid var(--line); }
+  header.top .wrap { display:flex; align-items:center; justify-content:space-between; gap:12px; padding-top:18px; padding-bottom:18px; flex-wrap:wrap; }
+  .brand { display:flex; align-items:center; gap:10px; color:var(--ink); text-decoration:none; font-family:'Bricolage Grotesque',sans-serif; font-weight:800; font-size:17px; }
+  .brand i { width:32px; height:32px; border-radius:9px; background:var(--gold); color:#22262A; display:grid; place-items:center; font-style:normal; font-size:19px; }
+  .brand b { color:var(--gold); font-weight:800; }
+  .back { color:var(--muted); font-size:14px; font-weight:600; }
+  .hero { padding:clamp(36px,6vw,72px) 0 clamp(20px,3vw,32px); }
+  .eyebrow { color:var(--gold); font-weight:700; font-size:13px; letter-spacing:.14em; text-transform:uppercase; margin-bottom:12px; }
+  h1 { font-family:'Bricolage Grotesque',sans-serif; font-weight:800; font-size:clamp(34px,6vw,60px); line-height:.98; letter-spacing:-.03em; margin:0 0 16px; text-wrap:balance; }
+  h1 span { color:var(--gold); }
+  .lead { color:var(--muted); font-size:17px; max-width:40em; margin:0; }
+  .steps { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr)); gap:10px; margin:24px 0 0; padding:0; list-style:none; counter-reset:s; }
+  .steps li { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px 16px; font-size:14px; color:var(--muted); counter-increment:s; }
+  .steps li::before { content:counter(s); display:inline-grid; place-items:center; width:24px; height:24px; border-radius:50%; background:var(--gold); color:#22262A; font-weight:800; font-size:13px; margin-right:8px; }
+  .steps b { color:var(--ink); }
+  form { display:flex; flex-direction:column; gap:22px; padding-bottom:80px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:clamp(18px,3.5vw,32px); }
+  .card h2 { font-family:'Bricolage Grotesque',sans-serif; font-weight:800; font-size:clamp(22px,3vw,28px); letter-spacing:-.02em; margin:0 0 4px; }
+  .card .sub { color:var(--muted); font-size:14px; margin:0 0 18px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr)); gap:16px; }
+  label.f { display:flex; flex-direction:column; gap:7px; font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+  label.f .req, .req { color:var(--gold); }
+  input[type=text], input[type=email], input[type=tel], select, textarea { font:inherit; font-size:16px; font-weight:500; letter-spacing:normal; text-transform:none; color:var(--ink); background:var(--field); border:1px solid rgba(244,247,247,.2); border-radius:12px; padding:13px 14px; min-height:48px; width:100%; }
+  textarea { resize:vertical; min-height:96px; }
+  input:focus, select:focus, textarea:focus { outline:2px solid var(--gold); outline-offset:1px; }
+  [aria-invalid="true"] { border-color:var(--bad) !important; }
+  .full { grid-column:1/-1; }
+  fieldset { border:0; margin:0; padding:0; }
+  legend { font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; padding:0; }
+  .opts { display:flex; flex-wrap:wrap; gap:8px; }
+  .opts label { display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border:1px solid rgba(244,247,247,.2); border-radius:999px; background:var(--field); font-size:15px; cursor:pointer; min-height:44px; }
+  .opts input { accent-color:var(--gold); width:18px; height:18px; margin:0; }
+  table.det { width:100%; border-collapse:collapse; font-size:15px; }
+  table.det th { text-align:left; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); padding:8px 10px; border-bottom:2px solid var(--line); }
+  table.det td { padding:11px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  table.det td:first-child { color:var(--muted); width:44%; }
+  .tbd { color:var(--muted); font-style:italic; }
+  .terms { max-height:460px; overflow-y:auto; background:var(--field); border:1px solid rgba(244,247,247,.16); border-radius:12px; padding:18px 20px; font-size:14.5px; color:#DCE2E3; }
+  .terms h3 { font-size:15px; margin:16px 0 4px; color:var(--ink); }
+  .terms h3:first-child { margin-top:0; }
+  .terms p, .terms ul { margin:0 0 8px; }
+  .terms ul { padding-left:20px; }
+  .terms .caps { font-size:13.5px; }
+  .chk { display:flex; align-items:flex-start; gap:12px; font-size:15px; color:var(--muted); cursor:pointer; line-height:1.5; padding:6px 0; }
+  .chk input { flex:none; width:20px; height:20px; margin:2px 0 0; accent-color:var(--gold); cursor:pointer; }
+  .chk strong { color:var(--ink); font-weight:600; }
+  .sig { font-family:'Brush Script MT','Segoe Script',cursive; font-size:28px !important; }
+  .note { font-size:13px; color:var(--muted); margin:8px 0 0; }
+  .actions { display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
+  .btn { font:inherit; cursor:pointer; border:none; background:var(--gold); color:#22262A; padding:15px 30px; border-radius:100px; font-weight:700; font-size:16px; min-height:48px; box-shadow:0 0 0 1.5px rgba(79,201,192,.35),0 12px 30px rgba(79,201,192,.25); }
+  .btn[disabled] { opacity:.6; cursor:progress; }
+  .btn.ghost { background:rgba(79,201,192,.08); color:var(--ink); border:1px solid rgba(79,201,192,.6); box-shadow:none; }
+  #status { margin:0; font-size:15px; color:var(--muted); }
+  #status.bad { color:var(--bad); }
+  .done { text-align:center; padding:clamp(28px,5vw,48px); }
+  .done h2 { font-size:clamp(26px,4vw,38px); }
+  footer { border-top:1px solid var(--line); padding:24px 0; font-size:13px; color:#7c8385; }
+  footer a { color:var(--muted); }
+  .print-only { display:none; }
+  @media print {
+    body { background:#fff; color:#111; }
+    header.top, .hero .steps, .actions, #status, footer, .no-print, .done .actions { display:none !important; }
+    .card { border:1px solid #ccc; background:#fff; break-inside:auto; }
+    .terms { max-height:none; overflow:visible; background:#fff; color:#111; border:0; padding:0; }
+    .terms h3 { color:#111; }
+    input, select, textarea { color:#111 !important; background:#fff !important; border:1px solid #bbb !important; }
+    label.f, legend, .chk, .card .sub, table.det td:first-child, .lead { color:#333 !important; }
+    .chk strong { color:#111; }
+    .print-only { display:block; }
+    a { color:#111; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="./"><i>M</i><span>MAK<b>(e)</b> It Happen Moments, LLC</span></a>
+    <a class="back" href="./#join">← Back to the website</a>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <div class="eyebrow">Join the team · 1099 event staff</div>
+    <h1>Let's MAK<span>(e)</span> it happen, together.</h1>
+    <p class="lead">Thanks for wanting to help! Fill out your details, read the Independent Contractor Agreement, and sign below. It takes about 10 minutes.</p>
+    <ol class="steps">
+      <li><b>Fill out and sign</b> this form.</li>
+      <li><b>Mak reviews it</b> and countersigns.</li>
+      <li><b>You get your copy</b> and a W-9 to complete before your first event.</li>
+    </ol>
+  </section>
+
+  <form id="agreement" novalidate>
+    <!-- 1. About you -->
+    <div class="card">
+      <h2>About you</h2>
+      <p class="sub">Fields marked <span class="req">*</span> are required.</p>
+      <div class="grid">
+        <label class="f"><span>Full legal name <span class="req">*</span></span><input type="text" name="legal_name" autocomplete="name" required></label>
+        <label class="f"><span>Business name (if any)</span><input type="text" name="business_name" placeholder="Leave blank if none"></label>
+        <label class="f"><span>Email <span class="req">*</span></span><input type="email" name="email" autocomplete="email" placeholder="you@example.com" required></label>
+        <label class="f"><span>Phone <span class="req">*</span></span><input type="tel" name="phone" autocomplete="tel" inputmode="tel" placeholder="(817) 555-0123" required></label>
+        <label class="f"><span>City you live in <span class="req">*</span></span><input type="text" name="city" autocomplete="address-level2" required></label>
+        <label class="f"><span>Role you're interested in <span class="req">*</span></span>
+          <select name="role" required>
+            <option value="">Choose one</option>
+            <option>On-site event coordination</option>
+            <option>Event assistant</option>
+            <option>Setup and teardown</option>
+            <option>Guest check-in</option>
+            <option>Open to anything</option>
+          </select>
+        </label>
+        <label class="f"><span>How you'd like to be paid <span class="req">*</span></span>
+          <select name="payment" required>
+            <option value="">Choose one</option>
+            <option>Zelle</option>
+            <option>Venmo</option>
+            <option>Check</option>
+          </select>
+        </label>
+        <label class="f"><span>How did you hear about me?</span>
+          <select name="source">
+            <option value="">Choose one</option>
+            <option>Instagram</option><option>Facebook</option><option>LinkedIn</option><option>A friend</option><option>Worked an event with me</option><option>Other</option>
+          </select>
+        </label>
+        <fieldset class="full">
+          <legend>When are you usually available? <span class="req">*</span></legend>
+          <div class="opts" id="avail">
+            <label><input type="checkbox" name="availability" value="Weekdays">Weekdays</label>
+            <label><input type="checkbox" name="availability" value="Weeknights">Weeknights</label>
+            <label><input type="checkbox" name="availability" value="Saturdays">Saturdays</label>
+            <label><input type="checkbox" name="availability" value="Sundays">Sundays</label>
+          </div>
+        </fieldset>
+        <label class="f full"><span>Event or hospitality experience</span><textarea name="experience" placeholder="Weddings you've worked, serving, retail, volunteering… new to events is okay too!"></textarea></label>
+      </div>
+    </div>
+
+    <!-- 2. Emergency contact -->
+    <div class="card">
+      <h2>Emergency contact</h2>
+      <p class="sub">Someone we can call if something happens while you're working an event.</p>
+      <div class="grid">
+        <label class="f"><span>Name <span class="req">*</span></span><input type="text" name="ec_name" required></label>
+        <label class="f"><span>Phone <span class="req">*</span></span><input type="tel" name="ec_phone" inputmode="tel" required></label>
+      </div>
+    </div>
+
+    <!-- 3. Agreement -->
+    <div class="card">
+      <h2>Independent Contractor Agreement · Event Staff (1099)</h2>
+      <p class="sub">Template · Rev. October 2026 (v2). This agreement is between MAK(e) It Happen Moments, LLC, a Texas limited liability company ("Company"), and <strong id="nameEcho" style="color:var(--ink)">you</strong> ("Contractor"), dated <strong id="dateEcho" style="color:var(--ink)"></strong>.</p>
+      <table class="det" aria-label="Agreement details">
+        <thead><tr><th>Item</th><th>Details</th></tr></thead>
+        <tbody>
+          <tr><td>Contractor business name (if any)</td><td id="d_business">N/A</td></tr>
+          <tr><td>Role</td><td id="d_role" class="tbd">Choose a role above</td></tr>
+          <tr><td>Rate</td><td>$15 per hour</td></tr>
+          <tr><td>Payment method</td><td id="d_payment" class="tbd">Choose above</td></tr>
+          <tr><td>Dress</td><td>All black</td></tr>
+          <tr><td>Notice Contractor gives to cancel</td><td>7 days</td></tr>
+          <tr><td>Contractor email and phone for notices</td><td id="d_contact" class="tbd">From your details above</td></tr>
+        </tbody>
+      </table>
+
+      <p class="sub" style="margin:22px 0 10px">Please read the full terms below (scroll inside the box).</p>
+      <div class="terms" tabindex="0" aria-label="Agreement terms">
+        <p>Use for individuals paid to work events with Company, such as coordinators, assistants and setup or teardown crew. (Businesses that sell directly to clients sign the Preferred Vendor &amp; Referral Agreement instead.)</p>
+        <h3>1. Independent contractor.</h3>
+        <p>Contractor is an independent contractor, not an employee, partner, agent or joint venturer of Company. Contractor is not eligible for employee benefits, workers' compensation, unemployment insurance, overtime pay or tax withholding through Company. Contractor is responsible for all of their own federal and state taxes, including self-employment tax. Contractor may not sign contracts or make promises for Company or its clients.</p>
+        <h3>2. Bookings.</h3>
+        <p>Company will offer work through a booking confirmation (the form attached, or a text or email with the same details). Contractor may accept or decline any booking. Once Contractor accepts, the booking becomes part of this agreement. Company does not guarantee any amount of work, and Contractor is free to work for others, including other planners, vendors and venues.</p>
+        <h3>3. How the work is done.</h3>
+        <p>Company sets the results needed for each event: the timeline, the client's requirements and the venue rules. Contractor uses their own skill and judgment to decide how to deliver those results. Contractor provides their own transportation, phone and the basic tools their role normally requires. Contractor may send a qualified substitute only with Company's approval first. Contractor pays the substitute. Before working any event, the substitute must sign Company's Confidentiality Agreement and Non-Solicitation Agreement.</p>
+        <h3>4. Pay.</h3>
+        <p>Company will pay the rate above within 14 days after each event and after receiving Contractor's invoice or confirmation of hours. Hourly work runs from the call time in the booking until Company's on-site lead confirms Contractor is done. Hours beyond the booking must be approved by Company in advance (a text is fine).</p>
+        <p>Expenses are not reimbursed unless Company approves them in writing in advance and Contractor provides receipts.</p>
+        <p>Tips a client gives directly to Contractor belong to Contractor. Tips a client gives to Company for the whole team will be split evenly among everyone who worked that event.</p>
+        <p>Tax forms. Contractor will give Company a completed IRS Form W-9 before the first payment; no payment is made until it is received. Company will issue Form 1099-NEC if payments for the year reach the IRS reporting threshold.</p>
+        <h3>5. Standards.</h3>
+        <p>At each event, Contractor will:</p>
+        <ul>
+          <li>arrive on time, follow the event timeline and dress as stated above;</li>
+          <li>follow venue rules and treat clients, guests and vendors professionally;</li>
+          <li>not drink alcohol, use drugs, or smoke or vape in guest areas while working, and not bring personal guests;</li>
+          <li>tell Company right away about any injury, accident, damage, safety issue or guest complaint.</li>
+        </ul>
+        <p>Contractor confirms they are at least 18 years old and legally allowed to work in the United States.</p>
+        <h3>6. Cancellations and no-shows.</h3>
+        <p>If Contractor must cancel a confirmed booking, they will give at least the notice shown above, except in a genuine emergency, and will help find a replacement if they can. A no-show without notice, or repeated late cancellations, lets Company end this agreement immediately. Company may cancel or shorten any booking at any time and will try to give as much notice as it can. Contractor is paid only for work actually performed. No pay is owed for a cancelled booking or for hours not worked. If Contractor has already arrived and started work when an event is cut short, Company pays for the hours worked (or, for a per-event rate, the full rate).</p>
+        <h3>7. Confidentiality.</h3>
+        <p>Company will give Contractor access to confidential information, including client names and contact details, budgets, contracts, guest information, pricing, vendor terms and Company's planning methods and templates. Contractor will use it only to work Company events, will not share it, and will return or delete it when this agreement ends. This obligation continues after the agreement ends.</p>
+        <h3>8. Client non-solicitation.</h3>
+        <p>In exchange for the confidential information and client relationships Company provides, for 12 months after Contractor's last event with Company, Contractor will not, directly or through anyone else, offer or provide event planning or coordination services to any client Contractor met or learned about through Company, or encourage any client to stop or reduce working with Company. If such a client contacts Contractor directly, Contractor will refer them to Company. This does not stop Contractor from working for other planners, vendors or venues, or from serving people Contractor knew before working with Company. If a court finds this section too broad, it may narrow it to what is enforceable under Texas law.</p>
+        <h3>9. Photos, social media and work product.</h3>
+        <p>Contractor will not post photos of a client's event, or tag or name the client, without Company's approval. Contractor allows Company to use photos of Contractor working at events in Company's marketing. Timelines, layouts, checklists and other materials Contractor creates for Company events belong to Company.</p>
+        <h3>10. Property.</h3>
+        <p>Contractor will take reasonable care of Company and client property and will pay for loss or damage caused by Contractor's negligence or misconduct. Any deduction from Contractor's pay for this requires Contractor's written agreement.</p>
+        <h3>11. Insurance and injuries.</h3>
+        <p>Company does not carry workers' compensation or health insurance for Contractor. Contractor is responsible for their own health and injury coverage and for auto insurance required by Texas law when driving to and from events.</p>
+        <h3>12. Indemnity.</h3>
+        <p class="caps">CONTRACTOR WILL DEFEND, INDEMNIFY AND HOLD HARMLESS COMPANY AND ITS OWNER FROM ALL CLAIMS, DAMAGES AND COSTS, INCLUDING REASONABLE ATTORNEY'S FEES, TO THE EXTENT CAUSED BY CONTRACTOR'S NEGLIGENCE, MISCONDUCT OR BREACH OF THIS AGREEMENT.</p>
+        <h3>13. Ending the agreement.</h3>
+        <p>Either party may end this agreement at any time by written notice. Ending the agreement cancels any bookings not yet worked, and Company owes pay only for work already performed, as in Section 6. Sections 4 (for pay owed for work performed), 7 through 12, and 14 continue after the agreement ends.</p>
+        <h3>14. Texas law and disputes.</h3>
+        <p>This agreement is governed by Texas law, with venue in Tarrant County, Texas. Company may ask a court to stop a breach of Sections 7 through 9 right away, in addition to any other remedy.</p>
+        <h3>15. General.</h3>
+        <p>Written notice includes email or text to the contacts in this agreement (Company: makeithappenevents.dfw@gmail.com, 817-458-8699). This agreement and each accepted booking confirmation are the complete agreement. Changes must be in writing and approved by both parties. If any part is found unenforceable, it will be limited to the extent needed and the rest still applies. Contractor may not transfer this agreement except as allowed in Section 3. Electronic signatures and signed copies count as originals.</p>
+        <h3>Before Contractor's first event</h3>
+        <ul><li>Signed agreement</li><li>IRS Form W-9</li><li>Emergency contact</li><li>Certificate of insurance (if required)</li></ul>
+      </div>
+      <p class="note">Prefer paper? <a href="worker-agreement.pdf" target="_blank" rel="noopener">View the agreement as a PDF</a>.</p>
+    </div>
+
+    <!-- 4. Sign -->
+    <div class="card">
+      <h2>Agree and sign</h2>
+      <p class="sub">All boxes are required.</p>
+      <label class="chk"><input type="checkbox" name="c_agree" required><span><strong>I have read and agree to the Independent Contractor Agreement</strong> above, including the confidentiality, client non-solicitation and indemnity sections.</span></label>
+      <label class="chk"><input type="checkbox" name="c_eligible" required><span><strong>I am at least 18 years old</strong> and legally allowed to work in the United States.</span></label>
+      <label class="chk"><input type="checkbox" name="c_contractor" required><span><strong>I understand I am an independent contractor</strong>, not an employee, and I'm responsible for my own taxes. I'll complete an IRS Form W-9 before my first payment. <em>(Please don't type your Social Security number on this page. Mak will send the W-9 separately.)</em></span></label>
+      <label class="chk"><input type="checkbox" name="c_esign" required><span><strong>I agree to sign electronically.</strong> Typing my name below is my legal signature, the same as signing by hand.</span></label>
+      <label class="chk"><input type="checkbox" name="c_privacy" required><span><strong>I agree to the <a href="privacy-policy.pdf" target="_blank" rel="noopener">Privacy Policy</a></strong> and that Mak may contact me by phone, text or email about working events.</span></label>
+      <div class="grid" style="margin-top:16px">
+        <label class="f"><span>Type your full legal name to sign <span class="req">*</span></span><input type="text" name="signature" class="sig" autocomplete="off" required></label>
+        <label class="f"><span>Date</span><input type="text" name="sign_date" readonly></label>
+      </div>
+      <p class="note">Your signature must match the full legal name you entered above.</p>
+      <input type="text" name="botcheck" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+    </div>
+
+    <div class="actions">
+      <button type="submit" class="btn" id="send">Sign and send to Mak</button>
+      <p id="status" role="status" aria-live="polite"></p>
+    </div>
+  </form>
+
+  <div id="thanks" class="card done" hidden>
+    <div class="eyebrow">Signed and sent</div>
+    <h2>Thank you, <span id="thanksName"></span>!</h2>
+    <p class="lead" style="margin:0 auto 22px">Your signed agreement is on its way to Mak. She'll review it, countersign and send you a W-9 to complete. Keep a copy for your records.</p>
+    <div class="actions" style="justify-content:center">
+      <button type="button" class="btn" id="printCopy">Save or print my copy</button>
+      <a class="btn ghost" href="./" style="text-decoration:none">Back to the website</a>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">MAK(e) It Happen Moments, LLC · Dallas &amp; Fort Worth · 817-458-8699 · <a href="mailto:makeithappenevents.dfw@gmail.com">makeithappenevents.dfw@gmail.com</a> · <a href="privacy-policy.pdf" target="_blank" rel="noopener">Privacy Policy</a></div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var EMAIL = "makeithappenevents.dfw@gmail.com";
+  var W3F_KEY = "76e190de-1d31-439b-95f6-00a21030977a";
+  var VERSION = "Independent Contractor Agreement · Event Staff (1099) · Rev. October 2026 (v2)";
+  var form = document.getElementById("agreement");
+  var status = document.getElementById("status");
+  var sendBtn = document.getElementById("send");
+  var $ = function (n) { return form.elements.namedItem(n); };
+  var val = function (n) { var el = $(n); return el ? String(el.value || "").trim() : ""; };
+  var today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  $("sign_date").value = today;
+  document.getElementById("dateEcho").textContent = today;
+
+  function sync() {
+    var name = val("legal_name");
+    document.getElementById("nameEcho").textContent = name || "you";
+    document.getElementById("d_business").textContent = val("business_name") || "N/A";
+    var set = function (id, v, ph) { var td = document.getElementById(id); td.textContent = v || ph; td.className = v ? "" : "tbd"; };
+    set("d_role", val("role"), "Choose a role above");
+    set("d_payment", val("payment"), "Choose above");
+    var c = [val("email"), val("phone")].filter(Boolean).join(" · ");
+    set("d_contact", c, "From your details above");
+  }
+  form.addEventListener("input", function (e) { sync(); if (e.target.setAttribute) e.target.setAttribute("aria-invalid", "false"); });
+  form.addEventListener("change", sync);
+
+  var norm = function (s) { return s.toLowerCase().replace(/[^a-z]/g, ""); };
+  var avail = function () { return Array.prototype.slice.call(form.querySelectorAll('input[name="availability"]:checked')).map(function (x) { return x.value; }); };
+
+  function check() {
+    var missing = [], first = null;
+    var need = [["legal_name", "your full legal name"], ["email", "your email"], ["phone", "your phone"], ["city", "your city"], ["role", "the role you're interested in"], ["payment", "how you'd like to be paid"], ["ec_name", "an emergency contact name"], ["ec_phone", "an emergency contact phone"]];
+    need.forEach(function (p) { var el = $(p[0]); var bad = !val(p[0]); el.setAttribute("aria-invalid", bad ? "true" : "false"); if (bad) { missing.push(p[1]); if (!first) first = el; } });
+    if (val("email") && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val("email"))) { $("email").setAttribute("aria-invalid", "true"); missing.push("a valid email"); if (!first) first = $("email"); }
+    if (val("phone") && val("phone").replace(/\D/g, "").length < 10) { $("phone").setAttribute("aria-invalid", "true"); missing.push("a valid phone number"); if (!first) first = $("phone"); }
+    if (!avail().length) { missing.push("your availability"); if (!first) first = form.querySelector('input[name="availability"]'); }
+    var boxes = ["c_agree", "c_eligible", "c_contractor", "c_esign", "c_privacy"].filter(function (n) { return !$(n).checked; });
+    if (boxes.length) { missing.push("all five checkboxes in Agree and sign"); if (!first) first = $(boxes[0]); }
+    if (!val("signature")) { $("signature").setAttribute("aria-invalid", "true"); missing.push("your typed signature"); if (!first) first = $("signature"); }
+    else if (val("legal_name") && norm(val("signature")) !== norm(val("legal_name"))) { $("signature").setAttribute("aria-invalid", "true"); missing.push("a signature that matches your full legal name"); if (!first) first = $("signature"); }
+    if (missing.length) {
+      status.className = "bad";
+      status.textContent = "Please add " + (missing.length < 2 ? missing[0] : missing.slice(0, -1).join(", ") + " and " + missing[missing.length - 1]) + ".";
+      if (first) first.focus();
+      return false;
+    }
+    return true;
+  }
+
+  function payload() {
+    var signedAt = new Date();
+    var p = {
+      "Name": val("legal_name"),
+      "Business name": val("business_name") || "N/A",
+      "Email": val("email"),
+      "Phone": val("phone"),
+      "City": val("city"),
+      "Role interested in": val("role"),
+      "Payment method": val("payment"),
+      "Availability": avail().join(", "),
+      "Experience": val("experience") || "(nothing added)",
+      "How they heard about you": val("source") || "(not given)",
+      "Emergency contact": val("ec_name") + " · " + val("ec_phone"),
+      "Agreement": VERSION,
+      "Notice to cancel": "7 days",
+      "Rate": "$15 per hour",
+      "Dress": "All black",
+      "Agreed to agreement": "Yes",
+      "Confirmed 18+ and legally allowed to work in the US": "Yes",
+      "Acknowledged independent contractor status and W-9": "Yes",
+      "Agreed to sign electronically": "Yes",
+      "Agreed to Privacy Policy": "Yes",
+      "Electronic signature": val("signature"),
+      "Signed on": signedAt.toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "long", timeStyle: "short" }) + " (Central)",
+      "Signed at (UTC)": signedAt.toISOString(),
+      "Device": navigator.userAgent
+    };
+    return { p: p, subject: "New helper application: " + val("role") + " (" + val("legal_name") + ")" };
+  }
+
+  function fallback(d) {
+    var body = Object.keys(d.p).map(function (k) { return k + ": " + d.p[k]; }).join("\n");
+    status.className = "bad";
+    status.textContent = "The form is having trouble right now, but nothing is lost. ";
+    var a = document.createElement("a");
+    a.href = "mailto:" + EMAIL + "?subject=" + encodeURIComponent(d.subject) + "&body=" + encodeURIComponent(body);
+    a.textContent = "Tap here to email your signed details to Mak";
+    a.style.fontWeight = "700";
+    status.appendChild(a);
+  }
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (val("botcheck")) return;
+    if (!check()) return;
+    var d = payload();
+    sendBtn.disabled = true; sendBtn.textContent = "Sending...";
+    status.className = ""; status.textContent = "Sending your signed agreement...";
+    fetch("https://api.web3forms.com/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Accept": "application/json" },
+      body: JSON.stringify(Object.assign({ access_key: W3F_KEY, subject: d.subject, from_name: "MAK(e) It Happen website", replyto: val("email"), botcheck: "" }, d.p))
+    }).then(function (r) { return r.json(); }).then(function (res) {
+      if (!res || String(res.success) !== "true") throw new Error("not sent");
+      document.getElementById("thanksName").textContent = val("legal_name").split(" ")[0];
+      document.getElementById("thanks").hidden = false;
+      form.querySelector(".actions").hidden = true;
+      Array.prototype.forEach.call(form.querySelectorAll("input,select,textarea"), function (el) { el.disabled = true; });
+      document.getElementById("thanks").scrollIntoView({ behavior: "smooth", block: "center" });
+    }).catch(function () { fallback(d); }).then(function () { sendBtn.disabled = false; sendBtn.textContent = "Sign and send to Mak"; });
+  });
+
+  document.getElementById("printCopy").addEventListener("click", function () { window.print(); });
+  sync();
+})();
+</script>
+</body>
+</html>
