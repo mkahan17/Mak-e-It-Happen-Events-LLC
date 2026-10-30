@@ -115,10 +115,10 @@
     <!-- 1. About you -->
     <div class="card">
       <h2>About you</h2>
-      <p class="sub">Fields marked <span class="req">*</span> are required.</p>
+      <p class="sub">Every field is required.</p>
       <div class="grid">
         <label class="f"><span>Full legal name <span class="req">*</span></span><input type="text" name="legal_name" autocomplete="name" required></label>
-        <label class="f"><span>Business name (if any)</span><input type="text" name="business_name" placeholder="Leave blank if none"></label>
+        <label class="f"><span>Business name <span class="req">*</span></span><input type="text" name="business_name" placeholder="Type N/A if you don't have one" required></label>
         <label class="f"><span>Email <span class="req">*</span></span><input type="email" name="email" autocomplete="email" placeholder="you@example.com" required></label>
         <label class="f"><span>Phone <span class="req">*</span></span><input type="tel" name="phone" autocomplete="tel" inputmode="tel" placeholder="(817) 555-0123" required></label>
         <label class="f"><span>City you live in <span class="req">*</span></span><input type="text" name="city" autocomplete="address-level2" required></label>
@@ -128,7 +128,6 @@
             <option>On-site event coordination</option>
             <option>Event assistant</option>
             <option>Setup and teardown</option>
-            <option>Guest check-in</option>
             <option>Open to anything</option>
           </select>
         </label>
@@ -140,8 +139,8 @@
             <option>Check</option>
           </select>
         </label>
-        <label class="f"><span>How did you hear about me?</span>
-          <select name="source">
+        <label class="f"><span>How did you hear about me? <span class="req">*</span></span>
+          <select name="source" required>
             <option value="">Choose one</option>
             <option>Instagram</option><option>Facebook</option><option>LinkedIn</option><option>A friend</option><option>Worked an event with me</option><option>Other</option>
           </select>
@@ -155,7 +154,7 @@
             <label><input type="checkbox" name="availability" value="Sundays">Sundays</label>
           </div>
         </fieldset>
-        <label class="f full"><span>Event or hospitality experience</span><textarea name="experience" placeholder="Weddings you've worked, serving, retail, volunteering… new to events is okay too!"></textarea></label>
+        <label class="f full"><span>Event or hospitality experience <span class="req">*</span></span><textarea name="experience" required placeholder="Weddings you've worked, serving, retail, volunteering… new to events is okay too!"></textarea></label>
       </div>
     </div>
 
@@ -306,7 +305,7 @@
 
   function check() {
     var missing = [], first = null;
-    var need = [["legal_name", "your full legal name"], ["email", "your email"], ["phone", "your phone"], ["city", "your city"], ["role", "the role you're interested in"], ["payment", "how you'd like to be paid"], ["ec_name", "an emergency contact name"], ["ec_phone", "an emergency contact phone"]];
+    var need = [["legal_name", "your full legal name"], ["business_name", "your business name (or N/A)"], ["email", "your email"], ["phone", "your phone"], ["city", "your city"], ["role", "the role you're interested in"], ["payment", "how you'd like to be paid"], ["source", "how you heard about me"], ["experience", "your experience (new to events is okay, just say so)"], ["ec_name", "an emergency contact name"], ["ec_phone", "an emergency contact phone"]];
     need.forEach(function (p) { var el = $(p[0]); var bad = !val(p[0]); el.setAttribute("aria-invalid", bad ? "true" : "false"); if (bad) { missing.push(p[1]); if (!first) first = el; } });
     if (val("email") && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val("email"))) { $("email").setAttribute("aria-invalid", "true"); missing.push("a valid email"); if (!first) first = $("email"); }
     if (val("phone") && val("phone").replace(/\D/g, "").length < 10) { $("phone").setAttribute("aria-invalid", "true"); missing.push("a valid phone number"); if (!first) first = $("phone"); }
