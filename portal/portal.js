@@ -599,7 +599,7 @@ async function startAdmin() {
     if (state.tab === 'overview') {
       $('#saveC').addEventListener('click', async () => { const patch = readInputs($('#cform')); if (!patch.name || !patch.email) return toast('Name and email are required.'); patch.email = patch.email.toLowerCase(); try { await DB.update('clients', c.id, patch); await DB.saveNotes(c.id, $('#pnotes').value.trim()); toast('Saved'); await loadClients(c.id); } catch (e) { toast(errMsg(e)); } });
       $('#invite').addEventListener('click', () => copyText($('#inviteText').textContent, 'Invite copied. Paste it into a text or email.'));
-      $('#sendInvite').addEventListener('click', async () => { try { await DB.update('clients', c.id, { invite_requested_at: new Date().toISOString() }); toast('Welcome email queued. It goes out within about 5 minutes.'); await loadClients(c.id); } catch (e) { toast(errMsg(e)); } });
+      $('#sendInvite').addEventListener('click', () => welcomeEditor(c));
       const del = $('#delC');
       del.addEventListener('click', async () => {
         if (!del.dataset.armed) { del.dataset.armed = '1'; del.textContent = 'Tap again to delete everything for this client'; setTimeout(() => { if (del.isConnected) { delete del.dataset.armed; del.textContent = 'Delete client'; } }, 4000); return; }
@@ -673,12 +673,52 @@ async function startAdmin() {
       } catch (e) { toast(errMsg(e)); }
     });
   }
+  // Mak personalizes the welcome email (name, event, date) and sees exactly what will be sent.
+  function welcomeEditor(c) {
+    const defName = [firstName(c.name), firstName(c.partner)].filter(Boolean).join(' & ');
+    const defEvent = /wedding/i.test((c.package || '') + ' ' + (c.event_type || '')) ? 'wedding' : 'event';
+    const defDate = c.event_date ? fmtDate(c.event_date, { month: 'long', day: 'numeric', year: 'numeric' }) : '';
+    const v = { name: c.welcome_name || defName, event: c.welcome_event || defEvent, date: c.welcome_date ?? defDate };
+    const preview = () => {
+      const eventLine = `Welcome to the MAK(e) It Happen family! I'm so excited to be part of your ${v.event || 'event'}${v.date ? ' on ' + v.date : ''}!`;
+      return `<div class="copybox" style="white-space:normal;color:var(--ink);background:#fff;color:#22262A;border-style:solid">
+        <p style="margin:0 0 4px;color:#587073;font-size:13px"><b>To:</b> ${esc(c.email)}<br><b>Subject:</b> Welcome to MAK(e) It Happen! Your client portal is ready</p><hr style="border:0;border-top:1px solid #ddd;margin:10px 0">
+        <p style="margin:0 0 10px">Hi ${esc(v.name || 'there')},</p>
+        <p style="margin:0 0 10px">${esc(eventLine)}</p>
+        <p style="margin:0 0 10px">I've set up your own private client portal. It's where you'll see your timeline and what's coming up next, review and approve your run of show, keep track of payments, and share files with me, all in one place.</p>
+        <p style="margin:0 0 10px"><span style="display:inline-block;background:#4FC9C0;color:#22262A;font-weight:700;padding:9px 20px;border-radius:999px">Create my portal login</span></p>
+        <p style="margin:0 0 10px">Be sure to create your login with this email address (${esc(c.email)}). You'll get a quick email to confirm your account, and then you're all set!</p>
+        <p style="margin:0 0 10px">Questions anytime? Text me at ${esc(CFG.PHONE)}.</p>
+        <p style="margin:0">Can't wait to MAK(e) it happen!<br>Mak<br><span style="color:#888;font-size:12px">[your email signature]</span></p></div>`;
+    };
+    const m = modal(`<header><div><div class="eyebrow">Welcome email</div><h2>Personalize ${esc(firstName(c.name) || 'their')} welcome</h2></div><button class="btn ghost sm" data-close>Close</button></header>
+      <div class="form-grid">
+        <label class="f">Name(s) after "Hi"<input type="text" id="wName" value="${esc(v.name)}" placeholder="Sarah & James"></label>
+        <label class="f">Their event<input type="text" id="wEvent" value="${esc(v.event)}" placeholder="wedding"></label>
+        <label class="f">Date (as you want it written)<input type="text" id="wDate" value="${esc(v.date)}" placeholder="Saturday, May 1, 2027"></label>
+      </div>
+      <p class="dim" style="margin:0;font-size:13px">Leave the date blank to skip it. This is exactly what ${esc(c.email)} will get:</p>
+      <div id="wPrev">${preview()}</div>
+      <div class="actions"><button class="btn primary" id="wSend">${c.invite_requested_at ? 'Send welcome email again' : 'Send welcome email'}</button><button class="btn ghost" data-close>Not now</button></div>`);
+    ['wName', 'wEvent', 'wDate'].forEach(id => m.querySelector('#' + id).addEventListener('input', () => {
+      v.name = m.querySelector('#wName').value.trim(); v.event = m.querySelector('#wEvent').value.trim(); v.date = m.querySelector('#wDate').value.trim();
+      m.querySelector('#wPrev').innerHTML = preview();
+    }));
+    m.querySelector('#wSend').addEventListener('click', async e => {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email || '')) return toast('Add their email on the Overview tab first.');
+      e.target.disabled = true;
+      try {
+        await DB.update('clients', c.id, { welcome_name: v.name, welcome_event: v.event, welcome_date: v.date, invite_requested_at: new Date().toISOString() });
+        closeModal(); toast('Welcome email queued. It goes out within about 5 minutes.'); await loadClients(c.id);
+      } catch (err) { e.target.disabled = false; toast(errMsg(err)); }
+    });
+  }
   function newClient() {
     const blank = { name: '', partner: '', email: '', phone: '', event_type: '', package: 'Day-of coordination: events', event_date: '', venue: '', guests: '', total_fee: '', booked_on: todayISO(), notes: '' };
     const m = modal(`<header><div><div class="eyebrow">Just booked</div><h2>New client portal</h2></div><button class="btn ghost sm" data-close>Close</button></header>
       <p class="muted" style="margin:0">Their timeline and payment schedule fill in from the package, the event date and the total fee. You can edit everything after.</p>
       <div class="form-grid" id="ncf">${CLIENT_FIELDS.map(f => inputHTML(f, blank[f[0]])).join('')}</div>
-      <label class="c"><input type="checkbox" id="ncInvite" checked>Email their welcome + portal link now</label>
+      <label class="c"><input type="checkbox" id="ncInvite" checked>Write their welcome email + portal link next</label>
       <div class="actions"><button class="btn primary" id="ncs">Create portal</button></div>`);
     m.querySelector('#ncs').addEventListener('click', async e => {
       const v = readInputs(m.querySelector('#ncf'));
@@ -687,13 +727,13 @@ async function startAdmin() {
       e.target.disabled = true;
       try {
         v.email = v.email.toLowerCase(); v.booked_on = v.booked_on || todayISO();
-        if (m.querySelector('#ncInvite').checked) v.invite_requested_at = new Date().toISOString();
+        const writeWelcome = m.querySelector('#ncInvite').checked;
         const c = await DB.insert('clients', v);
         const plan = buildPlan(c.id, c.package, c.event_date, c.booked_on, c.total_fee);
         await DB.insertMany('milestones', plan.milestones);
         await DB.insertMany('payments', plan.payments);
         closeModal(); state.tab = 'overview'; await loadClients(c.id);
-        toast(v.invite_requested_at ? 'Portal created. Their welcome email goes out within about 5 minutes.' : 'Portal created. Email or copy their invite when you are ready.');
+        if (writeWelcome) welcomeEditor(state.cur); else toast('Portal created. Email or copy their invite when you are ready.');
       } catch (err) { e.target.disabled = false; toast(errMsg(err)); }
     });
   }
