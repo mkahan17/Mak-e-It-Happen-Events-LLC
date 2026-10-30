@@ -248,7 +248,7 @@ const Live = (() => {
       else if (clientId && table !== 'comments') q = q.eq('client_id', clientId);
       return must(await q);
     },
-    async myClient() { return (must(await sb.from('clients').select('*').limit(1)) || [])[0] || null; },
+    async myClient(email) { return (must(await sb.from('clients').select('*').eq('email', String(email || '').toLowerCase()).limit(1)) || [])[0] || null; },
     async insert(table, row) { return must(await sb.from(table).insert(row).select().single()); },
     async insertMany(table, rows) { return rows.length ? must(await sb.from(table).insert(rows).select()) : []; },
     async update(table, id, patch) { return must(await sb.from(table).update(patch).eq('id', id).select().single()); },
@@ -356,7 +356,7 @@ async function startClient() {
   const root = $('#app');
   const head = $('#top');
   const drawHead = user => {
-    head.innerHTML = `<div class="wrap">${brandHTML('Client portal')}${user ? `<div class="who"><span class="dim" style="display:none">${esc(user.email)}</span><button class="btn ghost sm" id="out">Sign out</button></div>` : ''}</div>`;
+    head.innerHTML = `<div class="wrap">${brandHTML('Client portal')}${user ? `<div class="who"><span class="dim">${esc(user.email)}</span><button class="btn ghost sm" id="out">Sign out</button></div>` : ''}</div>`;
     const o = $('#out'); if (o) o.addEventListener('click', async () => { await DB.signOut(); go(); });
   };
   async function go() {
@@ -365,20 +365,29 @@ async function startClient() {
     if (!user) return authScreen(root, { title: 'Welcome to your portal', sub: 'MAK(e) It Happen Moments', onIn: go });
     root.innerHTML = '<div class="wrap"><p class="empty" style="padding:40px 0">Opening your portal…</p></div>';
     try {
-      const client = await DB.myClient();
+      let client = await DB.myClient(user.email), preview = null;
+      // Mak signed in here sees a labeled preview and picks which client's portal to look at.
+      if (!client && DB.mode === 'live' && await DB.isAdmin()) {
+        const all = (await DB.list('clients')).sort((a, b) => String(a.name).localeCompare(String(b.name)));
+        if (all.length) {
+          const pick = sessionStorage.getItem('mak-preview-client');
+          client = all.find(x => x.id === pick) || all[0];
+          preview = { all, email: user.email };
+        }
+      }
       if (!client) {
         root.innerHTML = `<div class="auth"><div class="card"><div class="eyebrow">Almost there</div><h1>Your portal isn't ready yet</h1><p class="muted" style="margin:0">Mak sets up your portal once your agreement is signed. If you've booked already, make sure you signed up with the same email address that's on your agreement, or text Mak at ${esc(CFG.PHONE)}.</p><button class="btn" id="out2">Sign out</button></div></div>`;
         $('#out2').addEventListener('click', async () => { await DB.signOut(); go(); });
         return;
       }
       const [milestones, reviews, comments, payments, meetings, vendors, files] = await Promise.all(['milestones', 'reviews', 'comments', 'payments', 'meetings', 'vendors', 'files'].map(t => DB.list(t, client.id)));
-      renderClient(root, client, { milestones, reviews, comments, payments, meetings, vendors, files }, go);
+      renderClient(root, client, { milestones, reviews, comments, payments, meetings, vendors, files }, go, preview);
     } catch (e) { root.innerHTML = `<div class="wrap"><p class="empty" style="padding:40px 0">Could not open your portal: ${esc(errMsg(e))}</p></div>`; }
   }
   go();
 }
 
-function renderClient(root, c, d, reload) {
+function renderClient(root, c, d, reload, preview) {
   const days = c.event_date ? daysUntil(c.event_date) : null;
   const names = [firstName(c.name), firstName(c.partner)].filter(Boolean).join(' & ');
   const ms = [...d.milestones].sort(byDate('due_date'));
@@ -399,6 +408,8 @@ function renderClient(root, c, d, reload) {
 
   root.innerHTML = `<div class="wrap">
     ${DB.mode === 'demo' ? `<div class="demo-banner" style="margin-top:16px">Sample mode: this is a pretend client so you can see the portal. Nothing here is real yet.</div>` : ''}
+    ${preview ? `<div class="demo-banner" style="margin-top:16px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center"><span><b>Admin preview:</b> you're signed in as Mak (${esc(preview.email)}), viewing what this client sees. Clients sign in with their own email.</span>
+      <label style="display:flex;gap:6px;align-items:center">Preview<select id="pvPick" style="min-height:34px;padding:4px 8px;width:auto">${preview.all.map(x => `<option value="${esc(x.id)}" ${x.id === c.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></label></div>` : ''}
     <section class="hero">
       <div><div class="eyebrow">${esc(c.package || c.event_type || 'Your event')}</div>
         <h1>Hi ${esc(names || 'there')}<span>.</span></h1>
@@ -439,7 +450,8 @@ function renderClient(root, c, d, reload) {
       </div>
     </div></div>`;
 
-  root.querySelectorAll('[data-review]').forEach(b => b.addEventListener('click', () => openClientReview(d.reviews.find(r => r.id === b.dataset.review), c, d, reload)));
+  const pv = $('#pvPick'); if (pv) pv.addEventListener('change', () => { sessionStorage.setItem('mak-preview-client', pv.value); reload(); });
+  root.querySelectorAll('[data-review]').forEach(b => b.addEventListener('click', () => preview ? toast('Preview only: your client approves this from their own login.') : openClientReview(d.reviews.find(r => r.id === b.dataset.review), c, d, reload)));
   root.querySelectorAll('[data-file]').forEach(b => b.addEventListener('click', () => openFile(d.files.find(f => f.id === b.dataset.file))));
   $('#cfile').addEventListener('change', async e => {
     for (const file of [...e.target.files]) {
