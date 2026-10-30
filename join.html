@@ -380,7 +380,7 @@
       if (!res || String(res.success) !== "true") throw new Error("not sent");
       document.getElementById("thanksName").textContent = val("legal_name").split(" ")[0];
       document.getElementById("thanks").hidden = false;
-      form.querySelector(".actions").hidden = true;
+      form.querySelector(".actions").style.display = "none"; status.textContent = "";
       Array.prototype.forEach.call(form.querySelectorAll("input,select,textarea"), function (el) { el.disabled = true; });
       document.getElementById("thanks").scrollIntoView({ behavior: "smooth", block: "center" });
     }).catch(function () { fallback(d); }).then(function () { sendBtn.disabled = false; sendBtn.textContent = "Sign and send to Mak"; });
