@@ -270,21 +270,26 @@ const DB = Live || Demo;
 const errMsg = e => (e && (e.message || e.error_description)) || 'Something went wrong. Try again.';
 
 /* ---------- shared pieces ---------- */
+// Creating a login is by invitation only: clients get it from the link Mak sends (?signup),
+// Mak from admin.html?setup. The database also refuses logins for emails that aren't on file.
 function authScreen(root, { title, sub, admin, onIn }) {
-  let mode = new URLSearchParams(location.search).has('signup') && !admin ? 'signup' : 'signin';
+  const params = new URLSearchParams(location.search);
+  const invited = admin ? params.has('setup') : params.has('signup');
+  let mode = invited ? 'signup' : 'signin';
   DB.onRecovery(() => { mode = 'newpass'; draw(); });
   function draw(msg, cls) {
     const t = { signin: ['Sign in', 'Sign in'], signup: ['Create your account', 'Create account'], reset: ['Reset your password', 'Send reset link'], newpass: ['Choose a new password', 'Save password'] }[mode];
     root.innerHTML = `<div class="auth"><form class="card" novalidate>
       ${DB.mode === 'demo' ? `<div class="demo-banner">Sample mode: any email and password works. Real logins turn on once Supabase is connected.</div>` : ''}
       <div class="eyebrow">${esc(sub)}</div><h1>${esc(mode === 'signin' ? title : t[0])}</h1>
-      ${mode === 'signup' ? `<p class="msg" style="color:var(--muted)">${admin ? 'Use your business email (makeithappenevents.dfw@gmail.com).' : 'Use the email address on your agreement with Mak.'}</p>` : ''}
+      ${mode === 'signup' ? `<p class="msg" style="color:var(--muted)">${admin ? 'Use your business email (makeithappenevents.dfw@gmail.com).' : 'Use the email address Mak has on file for you (the one her invite was sent to).'}</p>` : ''}
+      ${mode === 'signin' && !invited && !admin ? `<p class="msg" style="color:var(--muted)">The client portal is for booked MAK(e) It Happen clients. Your personal link to create a login comes from Mak once your agreement is signed.</p>` : ''}
       ${mode !== 'newpass' ? `<label class="f">Email<input type="email" name="email" autocomplete="email" required></label>` : ''}
       ${mode !== 'reset' ? `<label class="f">${mode === 'signin' ? 'Password' : 'New password'}<input type="password" name="password" autocomplete="${mode === 'signin' ? 'current-password' : 'new-password'}" minlength="8" required></label>` : ''}
       <button class="btn primary" type="submit">${t[1]}</button>
       <p class="msg ${cls || ''}" role="status">${esc(msg || '')}</p>
       <div class="actions" style="justify-content:space-between">
-        ${mode === 'signin' ? `${admin ? '<button type="button" class="link" data-m="signup">First time? Create your login</button>' : '<button type="button" class="link" data-m="signup">New here? Create your account</button>'}<button type="button" class="link" data-m="reset">Forgot password?</button>` : '<button type="button" class="link" data-m="signin">Back to sign in</button>'}
+        ${mode === 'signin' ? `${invited ? `<button type="button" class="link" data-m="signup">${admin ? 'First time? Create your login' : 'First time? Create your login'}</button>` : ''}<button type="button" class="link" data-m="reset">Forgot password?</button>` : '<button type="button" class="link" data-m="signin">Back to sign in</button>'}
       </div></form></div>`;
     root.querySelectorAll('[data-m]').forEach(b => b.addEventListener('click', () => { mode = b.dataset.m; draw(); }));
     root.querySelector('form').addEventListener('submit', async e => {
@@ -298,7 +303,14 @@ function authScreen(root, { title, sub, admin, onIn }) {
         else if (mode === 'signup') { const r = await DB.signUp(email, pw); if (r.confirm) { mode = 'signin'; draw('Check your email for a link to confirm your account, then sign in.', 'good'); } else onIn(); }
         else if (mode === 'reset') { await DB.reset(email); mode = 'signin'; draw('If that email has an account, a reset link is on its way.', 'good'); }
         else { await DB.setPassword(pw); onIn(); }
-      } catch (err) { btn.disabled = false; draw(/invalid login/i.test(errMsg(err)) ? 'That email and password do not match. Try again or reset your password.' : errMsg(err), 'bad'); }
+      } catch (err) {
+        btn.disabled = false;
+        const m = errMsg(err);
+        draw(/invalid login/i.test(m) ? 'That email and password do not match. Try again or reset your password.'
+          : /database error saving new user|invitation only/i.test(m) ? `This email isn't set up for a portal yet. Use the email address Mak sent your invite to, or text Mak at ${CFG.PHONE}.`
+          : /already registered/i.test(m) ? 'You already have a login with this email. Sign in instead, or reset your password.'
+          : m, 'bad');
+      }
     });
     const first = root.querySelector('input'); if (first) first.focus();
   }
@@ -472,6 +484,9 @@ const BLANK = {
   meetings: () => ({ title: 'Meeting', starts_at: todayISO() + 'T12:00', location: '', notes: '' }),
   vendors: () => ({ category: '', name: 'New vendor', contact: '', phone: '', email: '', arrival: '' }),
 };
+const inviteStatus = c => !c.invite_requested_at ? 'Not emailed yet'
+  : c.invited_at && c.invited_at >= c.invite_requested_at ? 'Welcome email sent ' + fmtDate(c.invited_at)
+  : 'Welcome email is on its way (goes out within about 5 minutes)';
 const CLIENT_FIELDS = [['name', 'Client name', 'text'], ['partner', 'Partner or company contact', 'text'], ['email', 'Email (their login)', 'email'], ['phone', 'Phone', 'text'], ['event_type', 'Event type', 'text'], ['package', 'Package', 'select', PACKAGE_NAMES.map(p => [p, p])], ['event_date', 'Event date', 'date'], ['venue', 'Venue', 'text'], ['guests', 'Guests', 'number'], ['total_fee', 'Total fee', 'number'], ['booked_on', 'Booked on', 'date']];
 
 function inputHTML([key, label, type, opts], val, attr = 'data-k') {
@@ -545,7 +560,8 @@ async function startAdmin() {
     const tabBody = {
       overview: () => `<div class="form-grid" id="cform">${CLIENT_FIELDS.map(f => inputHTML(f, c[f[0]])).join('')}</div>
         <label class="f" style="margin-top:12px">Private notes (only you ever see these)<textarea id="pnotes" placeholder="Family dynamics, must-haves, anything to remember">${esc(d.notes || '')}</textarea></label>
-        <div class="actions" style="margin-top:14px"><button class="btn primary" id="saveC">Save details</button><button class="btn" id="invite">Copy portal invite</button><button class="btn danger" id="delC">Delete client</button></div>
+        <div class="actions" style="margin-top:14px"><button class="btn primary" id="saveC">Save details</button><button class="btn" id="sendInvite">${c.invite_requested_at ? 'Email the welcome again' : 'Email their welcome + portal link'}</button><button class="btn" id="invite">Copy invite to text</button><button class="btn danger" id="delC">Delete client</button></div>
+        <p class="dim" style="margin:10px 0 0;font-size:13px">Portal welcome email: ${esc(inviteStatus(c))}</p>
         <div class="copybox" style="margin-top:14px" id="inviteText">Hi ${esc(firstName(c.name))}! Your MAK(e) It Happen client portal is ready. This is where you'll see your timeline, review your run of show, and keep track of payments.\n\nCreate your account here with ${esc(c.email)}:\n${esc(portalURL)}?signup</div>`,
       timeline: () => crudHTML('milestones', [...d.milestones].sort(byDate('due_date'))) + `<div class="actions" style="margin-top:12px"><button class="btn" id="rebuild">Rebuild from package template</button></div>`,
       reviews: () => `<div class="actions" style="margin-bottom:12px"><button class="btn primary" id="newR">Share something for review</button></div>
@@ -583,6 +599,7 @@ async function startAdmin() {
     if (state.tab === 'overview') {
       $('#saveC').addEventListener('click', async () => { const patch = readInputs($('#cform')); if (!patch.name || !patch.email) return toast('Name and email are required.'); patch.email = patch.email.toLowerCase(); try { await DB.update('clients', c.id, patch); await DB.saveNotes(c.id, $('#pnotes').value.trim()); toast('Saved'); await loadClients(c.id); } catch (e) { toast(errMsg(e)); } });
       $('#invite').addEventListener('click', () => copyText($('#inviteText').textContent, 'Invite copied. Paste it into a text or email.'));
+      $('#sendInvite').addEventListener('click', async () => { try { await DB.update('clients', c.id, { invite_requested_at: new Date().toISOString() }); toast('Welcome email queued. It goes out within about 5 minutes.'); await loadClients(c.id); } catch (e) { toast(errMsg(e)); } });
       const del = $('#delC');
       del.addEventListener('click', async () => {
         if (!del.dataset.armed) { del.dataset.armed = '1'; del.textContent = 'Tap again to delete everything for this client'; setTimeout(() => { if (del.isConnected) { delete del.dataset.armed; del.textContent = 'Delete client'; } }, 4000); return; }
@@ -661,6 +678,7 @@ async function startAdmin() {
     const m = modal(`<header><div><div class="eyebrow">Just booked</div><h2>New client portal</h2></div><button class="btn ghost sm" data-close>Close</button></header>
       <p class="muted" style="margin:0">Their timeline and payment schedule fill in from the package, the event date and the total fee. You can edit everything after.</p>
       <div class="form-grid" id="ncf">${CLIENT_FIELDS.map(f => inputHTML(f, blank[f[0]])).join('')}</div>
+      <label class="c"><input type="checkbox" id="ncInvite" checked>Email their welcome + portal link now</label>
       <div class="actions"><button class="btn primary" id="ncs">Create portal</button></div>`);
     m.querySelector('#ncs').addEventListener('click', async e => {
       const v = readInputs(m.querySelector('#ncf'));
@@ -669,12 +687,13 @@ async function startAdmin() {
       e.target.disabled = true;
       try {
         v.email = v.email.toLowerCase(); v.booked_on = v.booked_on || todayISO();
+        if (m.querySelector('#ncInvite').checked) v.invite_requested_at = new Date().toISOString();
         const c = await DB.insert('clients', v);
         const plan = buildPlan(c.id, c.package, c.event_date, c.booked_on, c.total_fee);
         await DB.insertMany('milestones', plan.milestones);
         await DB.insertMany('payments', plan.payments);
         closeModal(); state.tab = 'overview'; await loadClients(c.id);
-        toast('Portal created. Copy the invite and send it to them.');
+        toast(v.invite_requested_at ? 'Portal created. Their welcome email goes out within about 5 minutes.' : 'Portal created. Email or copy their invite when you are ready.');
       } catch (err) { e.target.disabled = false; toast(errMsg(err)); }
     });
   }
