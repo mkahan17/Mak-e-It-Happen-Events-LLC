@@ -15,7 +15,7 @@ window.PORTAL_CONFIG = {
   CHECK_PAYABLE: '',
 
   // "Book a call" button. Swap in your Google booking page link when it's ready.
-  BOOK_CALL_URL: 'sms:+18174588699?&body=Hi%20Mak!%20Can%20we%20set%20up%20a%20quick%20call%3F',
+  BOOK_CALL_URL: 'https://calendar.google.com/calendar/appointments/schedules/AcZssZ3nmdGiS3_OdkQ5Wr7W_3gdbD8kR8ORMGcqXQGPZPwvhzD59j_BwQnw7PRMaL_du3wX9Ova3kJn',
   SITE_URL: 'https://mkahan17.github.io/Mak-e-It-Happen-Events-LLC/',
   REVIEW_URL: 'https://g.page/r/CY07g4Axvu8hEBM/review',  // Google Business review page
   TOOLKIT_URL: 'https://claude.ai/artifact/MoGf8GU53ZkJKmgojBSJri',
