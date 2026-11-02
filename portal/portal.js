@@ -332,7 +332,7 @@ function reviewBodyHTML(r) {
   const b = r.body || {};
   let html = '';
   if (r.kind === 'run-of-show' && Array.isArray(b.rows) && b.rows.length) {
-    html += `<div style="overflow-x:auto"><table class="ros"><thead><tr><th>Time</th><th>What's happening</th><th>Notes</th></tr></thead><tbody>${b.rows.map(x => `<tr><td>${esc(x.time)}</td><td>${esc(x.title)}</td><td class="muted">${esc(x.notes)}</td></tr>`).join('')}</tbody></table></div>`;
+    html += `<div class="list">${b.rows.map(x => `<div class="row" style="align-items:flex-start"><span style="flex:none;width:86px;font-weight:700;color:var(--tint);font-variant-numeric:tabular-nums">${esc(x.time)}</span><span class="grow"><b>${esc(x.title)}</b>${x.notes ? `<span class="sub">${esc(x.notes)}</span>` : ''}</span></div>`).join('')}</div>`;
   }
   if (b.text) html += `<div class="doc">${String(b.text).split(/\n{2,}/).map(p => `<p>${esc(p)}</p>`).join('')}</div>`;
   if (r.link) html += `<div><a class="btn sm" href="${esc(r.link)}" target="_blank" rel="noopener">Open the full document</a></div>`;
@@ -356,7 +356,7 @@ async function startClient() {
   const root = $('#app');
   const head = $('#top');
   const drawHead = user => {
-    head.innerHTML = `<div class="wrap">${brandHTML('Client portal')}${user ? `<div class="who"><span class="dim">${esc(user.email)}</span><button class="btn ghost sm" id="out">Sign out</button></div>` : ''}</div>`;
+    head.innerHTML = `<div class="wrap">${brandHTML(user ? user.email : 'Client portal')}${user ? `<div class="who"><button class="btn ghost sm" id="out">Sign out</button></div>` : ''}</div>`;
     const o = $('#out'); if (o) o.addEventListener('click', async () => { await DB.signOut(); go(); });
   };
   async function go() {
@@ -387,7 +387,24 @@ async function startClient() {
   go();
 }
 
+// The client view is a simple app: five tabs along the bottom, one thing per screen.
+const ICONS = {
+  home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h5v-6h4v6h5V9.5"/></svg>',
+  timeline: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4M7.5 13.5h3M7.5 17h6"/></svg>',
+  review: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="m9 14 2 2 4-4"/></svg>',
+  pay: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="3"/><path d="M2.5 10h19M6.5 15h4"/></svg>',
+  files: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+  text: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.9A8 8 0 1 1 21 12z"/></svg>',
+  mail: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.5 6.5 8.5 6.5 8.5-6.5"/></svg>',
+  call: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4M12 13v4M10 15h4"/></svg>',
+  upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>',
+  star: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>',
+};
+const CLIENT_TABS = [['home', 'Home'], ['timeline', 'Timeline'], ['review', 'Review'], ['pay', 'Payments'], ['files', 'Files']];
+let clientTab = (location.hash.replace('#', '') === 'payments' ? 'pay' : location.hash.replace('#', '')) || 'home';
+
 function renderClient(root, c, d, reload, preview) {
+  if (!CLIENT_TABS.some(t => t[0] === clientTab)) clientTab = 'home';
   const days = c.event_date ? daysUntil(c.event_date) : null;
   const names = [firstName(c.name), firstName(c.partner)].filter(Boolean).join(' & ');
   const ms = [...d.milestones].sort(byDate('due_date'));
@@ -396,64 +413,72 @@ function renderClient(root, c, d, reload, preview) {
   const payAlerts = paymentAlerts(d.payments);
   const total = d.payments.reduce((s, p) => s + (Number(p.amount) || 0), 0), paid = d.payments.filter(p => p.paid_on).reduce((s, p) => s + (Number(p.amount) || 0), 0);
   const nowIdx = ms.findIndex(m => !m.done);
-  let lastMonth = '';
-  const timeline = ms.map((m, i) => {
-    const month = fmtDate(m.due_date, { month: 'long', year: 'numeric' });
-    const head = month !== lastMonth ? `<li class="month">${esc(month)}</li>` : ''; lastMonth = month;
-    const st = stepState(m), isEvent = c.event_date && m.due_date === c.event_date && /day!/i.test(m.title);
-    const cls = ['step', st === 'done' ? 'done' : '', i === nowIdx ? 'now' : '', st === 'late' ? 'late' : '', isEvent ? 'event' : ''].join(' ');
-    return `${head}<li class="${cls}"><div class="row1"><b>${esc(m.title)}</b><span class="when">${esc(fmtDate(m.due_date, { month: 'short', day: 'numeric' }))}</span>${m.owner === 'client' && !m.done ? '<span class="pill">Your to-do</span>' : ''}${st === 'late' ? '<span class="pill red">Past due</span>' : ''}</div>${m.detail ? `<p>${esc(m.detail)}</p>` : ''}${isReviewStep(m) && !m.done && days !== null && days <= 0 ? reviewBtn() : ''}</li>`;
-  }).join('');
   const meetings = [...d.meetings].filter(m => !m.starts_at || new Date(m.starts_at) >= new Date(Date.now() - DAY)).sort(byDate('starts_at'));
+  const chip = iso => `<div class="datechip"><span>${esc(fmtDate(iso, { month: 'short' }))}</span><b>${esc(fmtDate(iso, { day: 'numeric' }))}</b></div>`;
+  const title = (h, sub) => `<div class="large-title"><h1>${h}</h1>${sub ? `<p>${sub}</p>` : ''}</div>`;
+  const banner = (DB.mode === 'demo' ? `<div class="demo-banner" style="margin-top:14px">Sample mode: this is a pretend client so you can see the portal.</div>` : '') +
+    (preview ? `<div class="demo-banner" style="margin-top:14px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center"><span><b>Admin preview:</b> this is what your client sees.</span>
+      <select id="pvPick" style="min-height:38px;padding:6px 34px 6px 10px;width:auto;font-size:15px">${preview.all.map(x => `<option value="${esc(x.id)}" ${x.id === c.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></div>` : '');
 
-  root.innerHTML = `<div class="wrap">
-    ${DB.mode === 'demo' ? `<div class="demo-banner" style="margin-top:16px">Sample mode: this is a pretend client so you can see the portal. Nothing here is real yet.</div>` : ''}
-    ${preview ? `<div class="demo-banner" style="margin-top:16px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center"><span><b>Admin preview:</b> you're signed in as Mak (${esc(preview.email)}), viewing what this client sees. Clients sign in with their own email.</span>
-      <label style="display:flex;gap:6px;align-items:center">Preview<select id="pvPick" style="min-height:34px;padding:4px 8px;width:auto">${preview.all.map(x => `<option value="${esc(x.id)}" ${x.id === c.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></label></div>` : ''}
-    <section class="hero">
-      <div><div class="eyebrow">${esc(c.package || c.event_type || 'Your event')}</div>
-        <h1>Hi ${esc(names || 'there')}<span>.</span></h1>
-        <div class="meta">${c.event_date ? `<span>${esc(fmtDate(c.event_date, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }))}</span>` : ''}${c.venue ? `<span>${esc(c.venue)}</span>` : ''}${c.guests ? `<span>${esc(c.guests)} guests</span>` : ''}</div></div>
-      ${days !== null ? `<div class="count"><b>${days > 0 ? days : days === 0 ? 'Today' : '✓'}</b><span>${days > 1 ? 'days to go' : days === 1 ? 'day to go' : days === 0 ? 'is the day!' : 'Thank you for celebrating with me'}</span></div>` : ''}
-    </section>
-    <div class="alerts">
-      ${payAlerts.map(({ p, d: dd }) => `<div class="alert ${dd < 0 ? 'red' : 'amber'}"><span>${dd < 0 ? 'Past due' : dd === 0 ? 'Due today' : `Due in ${dd} day${dd === 1 ? '' : 's'}`}: ${esc(p.label)} · ${money(p.amount)}</span><a class="btn sm" href="#payments">See payments</a></div>`).join('')}
-      ${pending.length ? `<div class="alert"><span>${pending.length} item${pending.length === 1 ? '' : 's'} from Mak ${pending.length === 1 ? 'is' : 'are'} ready for your review</span><a class="btn sm primary" href="#review">Review now</a></div>` : ''}
-    </div>
-    <div class="grid">
-      <div class="col">
-        <section class="panel glow"><header><h2>What's next</h2></header>
-          ${upcoming.length ? `<ul class="next">${upcoming.map(m => `<li><div class="datechip"><span>${esc(fmtDate(m.due_date, { month: 'short' }))}</span><b>${esc(fmtDate(m.due_date, { day: 'numeric' }))}</b></div><div class="t"><b>${esc(m.title)}</b>${m.owner === 'client' ? ' <span class="pill">Your to-do</span>' : ''}<p>${esc(m.detail || (m.owner === 'client' ? 'Something I need from you.' : "Mak's handling this."))}</p>${isReviewStep(m) && days !== null && days <= 0 ? reviewBtn() : ''}</div></li>`).join('')}</ul>` : '<p class="empty">Everything is checked off. Enjoy!</p>'}
-        </section>
-        <section class="panel" id="review"><header><h2>For your review</h2><span class="dim">${d.reviews.length} item${d.reviews.length === 1 ? '' : 's'}</span></header>
-          ${d.reviews.length ? `<div class="items">${[...d.reviews].sort((a, b) => (a.status === 'pending' ? -1 : 0) - (b.status === 'pending' ? -1 : 0) || String(b.updated_at || '').localeCompare(String(a.updated_at || ''))).map(r => `<button class="item" data-review="${esc(r.id)}"><span class="t"><b>${esc(r.title)}</b><span>${r.kind === 'run-of-show' ? 'Run of show' : 'Document'}${r.version > 1 ? ' · version ' + esc(r.version) : ''} · updated ${esc(fmtDate(r.updated_at || r.created_at, { month: 'short', day: 'numeric' }))}</span></span>${statusPill(r.status)}</button>`).join('')}</div>` : "<p class='empty'>When Mak shares your run of show or other plans, they'll show up here for you to approve.</p>"}
-        </section>
-        <section class="panel"><header><h2>Your timeline</h2></header>
-          ${ms.length ? `<ol class="tl">${timeline}</ol>` : '<p class="empty">Mak is building your timeline.</p>'}
-        </section>
-      </div>
-      <div class="col">
-        <section class="panel" id="payments"><header><h2>Payments</h2></header>
-          ${d.payments.length ? `<div class="pay-sum"><div><span>Total</span><b>${money(total)}</b></div><div><span>Paid</span><b>${money(paid)}</b></div><div><span>Remaining</span><b>${money(total - paid)}</b></div></div>
-          <div class="bar"><i style="width:${total ? Math.min(100, paid / total * 100) : 0}%"></i></div>
-          <ul class="plist">${[...d.payments].sort(byDate('due_date')).map(p => { const dd = p.due_date ? daysUntil(p.due_date) : null; return `<li><span><b>${esc(p.label)}</b><br><span class="dim" style="font-size:13px">${p.paid_on ? 'Paid ' + esc(fmtDate(p.paid_on)) : p.due_date ? 'Due ' + esc(fmtDate(p.due_date)) : ''}</span></span><span style="text-align:right"><span class="amt">${money(p.amount)}</span><br>${p.paid_on ? '<span class="pill ok">Paid</span>' : dd !== null && dd < 0 ? '<span class="pill red">Past due</span>' : dd !== null && dd <= 14 ? '<span class="pill amber">Due soon</span>' : '<span class="pill dim">Upcoming</span>'}</span></li>`; }).join('')}</ul>
-          ${howToPayHTML()}` : '<p class="empty">Your payment schedule will show here.</p>'}
-        </section>
-        <section class="panel"><header><h2>Meetings</h2><a class="btn sm" href="${esc(CFG.BOOK_CALL_URL || '#')}">Book a call</a></header>
-          ${meetings.length ? `<ul class="mini">${meetings.map(m => `<li><b>${esc(m.title)}</b><span>${esc(fmtDateTime(m.starts_at))}${m.location ? ' · ' + esc(m.location) : ''}</span>${m.notes ? `<div class="muted" style="margin-top:4px">${esc(m.notes)}</div>` : ''}</li>`).join('')}</ul>` : '<p class="empty">No meetings scheduled right now.</p>'}
-        </section>
-        <section class="panel"><header><h2>Files</h2><label class="btn sm" style="cursor:pointer">Upload<input type="file" id="cfile" multiple hidden accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.csv,.txt"></label></header>
-          ${d.files.length ? `<ul class="mini">${[...d.files].sort(byDate('created_at')).reverse().map(f => `<li style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="min-width:0"><b style="overflow-wrap:anywhere">${esc(f.name)}</b><span>${f.uploaded_by === 'client' ? 'You' : 'Mak'} · ${esc(fmtDate(f.created_at, { month: 'short', day: 'numeric' }))}${f.size ? ' · ' + esc(fmtSize(f.size)) : ''}</span></span><button class="btn sm" data-file="${esc(f.id)}">Open</button></li>`).join('')}</ul>` : '<p class="empty">Share inspiration photos, your guest list or anything else with Mak here.</p>'}
-        </section>
-        ${d.vendors.length ? `<section class="panel"><header><h2>Your vendor team</h2></header><ul class="mini">${d.vendors.map(v => `<li><b>${esc(v.name)}</b><span>${esc(v.category || '')}${v.arrival ? ' · arrives ' + esc(v.arrival) : ''}${v.contact ? ' · ' + esc(v.contact) : ''}${v.phone ? ' · ' + esc(v.phone) : ''}</span></li>`).join('')}</ul></section>` : ''}
-        <section class="panel"><header><h2>Questions?</h2></header><p class="muted" style="margin:0 0 12px">I'm always a text away.</p><div class="actions"><a class="btn primary" href="sms:${esc(String(CFG.PHONE || '').replace(/\D/g, ''))}">Text Mak</a><a class="btn" href="mailto:${esc(CFG.EMAIL)}">Email Mak</a></div></section>
-      </div>
-    </div></div>`;
+  const screens = {
+    home: () => `${title(`Hi ${esc(names || 'there')}!`, [c.event_date ? esc(fmtDate(c.event_date, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })) : '', esc(c.venue || '')].filter(Boolean).join(' · '))}
+      ${days !== null ? `<div class="count-card"><div><b>${days > 0 ? days : days === 0 ? '🎉' : '✓'}</b><br><span>${days > 1 ? 'days to go' : days === 1 ? 'day to go' : days === 0 ? 'Today is the day!' : 'Thank you for celebrating with me!'}</span></div><div class="when">${esc(c.package || c.event_type || '')}${c.guests ? `<br>${esc(c.guests)} guests` : ''}</div></div>` : ''}
+      ${payAlerts.length || pending.length ? `<div class="section-title">Needs your attention</div><div class="list">
+        ${pending.length ? `<button class="row with-icon" data-go="review"><span class="ico">${ICONS.review}</span><span class="grow"><b>${pending.length} thing${pending.length === 1 ? '' : 's'} to review</b><span class="sub">Tap to look and approve</span></span><span class="chev"></span></button>` : ''}
+        ${payAlerts.map(({ p, d: dd }) => `<button class="row with-icon" data-go="pay"><span class="ico ${dd < 0 ? 'red' : 'amber'}">${ICONS.pay}</span><span class="grow"><b>${esc(p.label)} · ${money(p.amount)}</b><span class="sub">${dd < 0 ? 'Past due' : dd === 0 ? 'Due today' : `Due in ${dd} day${dd === 1 ? '' : 's'}`}</span></span><span class="chev"></span></button>`).join('')}
+      </div>` : ''}
+      <div class="section-title">Coming up next</div>
+      ${upcoming.length ? `<div class="list">${upcoming.map(m => `<div class="row" data-go="timeline" role="link" tabindex="0" style="cursor:pointer">${chip(m.due_date)}<span class="grow"><b>${esc(m.title)}</b><span class="sub">${m.owner === 'client' ? '<span class="pill">Your to-do</span> ' : ''}${esc(m.detail || (m.owner === 'client' ? 'Something I need from you.' : "Mak's handling this."))}</span>${isReviewStep(m) && days !== null && days <= 0 ? reviewBtn() : ''}</span><span class="chev"></span></div>`).join('')}</div>` : '<div class="list"><div class="row"><span class="grow muted">Everything is checked off. Enjoy!</span></div></div>'}
+      ${meetings.length ? `<div class="section-title">Meetings</div><div class="list">${meetings.map(m => `<div class="row">${m.starts_at ? chip(String(m.starts_at).slice(0, 10)) : ''}<span class="grow"><b>${esc(m.title)}</b><span class="sub">${esc(fmtDateTime(m.starts_at))}${m.location ? ' · ' + esc(m.location) : ''}${m.notes ? '<br>' + esc(m.notes) : ''}</span></span></div>`).join('')}</div>` : ''}
+      <div class="section-title">Need Mak?</div>
+      <div class="list">
+        <a class="row with-icon" href="sms:${esc(String(CFG.PHONE || '').replace(/\D/g, ''))}"><span class="ico green">${ICONS.text}</span><span class="grow"><b>Text Mak</b><span class="sub">${esc(CFG.PHONE)}</span></span><span class="chev"></span></a>
+        <a class="row with-icon" href="mailto:${esc(CFG.EMAIL)}"><span class="ico blue">${ICONS.mail}</span><span class="grow"><b>Email Mak</b></span><span class="chev"></span></a>
+        ${CFG.BOOK_CALL_URL ? `<a class="row with-icon" href="${esc(CFG.BOOK_CALL_URL)}" target="_blank" rel="noopener"><span class="ico">${ICONS.call}</span><span class="grow"><b>Book a call</b></span><span class="chev"></span></a>` : ''}
+      </div>`,
+    timeline: () => {
+      let last = '';
+      const groups = [];
+      ms.forEach((m, i) => {
+        const month = fmtDate(m.due_date, { month: 'long', year: 'numeric' });
+        if (month !== last) { groups.push({ month, rows: [] }); last = month; }
+        const st = stepState(m), isEvent = c.event_date && m.due_date === c.event_date && /day!/i.test(m.title);
+        const cls = st === 'done' ? 'done' : isEvent ? 'event' : st === 'late' ? 'late' : i === nowIdx ? 'now' : '';
+        groups[groups.length - 1].rows.push(`<div class="row"><span class="check ${cls}"></span><span class="grow"><b style="${st === 'done' ? 'color:var(--muted);font-weight:500' : ''}">${esc(m.title)}</b><span class="sub">${esc(fmtDate(m.due_date, { weekday: 'short', month: 'short', day: 'numeric' }))}${m.owner === 'client' && !m.done ? ' · <span class="pill">Your to-do</span>' : ''}${st === 'late' ? ' · <span class="pill red">Past due</span>' : ''}${m.detail ? '<br>' + esc(m.detail) : ''}</span>${isReviewStep(m) && !m.done && days !== null && days <= 0 ? reviewBtn() : ''}</span></div>`);
+      });
+      return `${title('Timeline', 'Everything from booking to your big day.')}
+        ${groups.length ? groups.map(g => `<div class="section-title">${esc(g.month)}</div><div class="list">${g.rows.join('')}</div>`).join('') : '<div class="section-title">&nbsp;</div><div class="list"><div class="row"><span class="grow muted">Mak is building your timeline.</span></div></div>'}
+        ${d.vendors.length ? `<div class="section-title">Your vendor team</div><div class="list">${d.vendors.map(v => `<div class="row"><span class="grow"><b>${esc(v.name)}</b><span class="sub">${[v.category, v.arrival && 'arrives ' + v.arrival, v.contact, v.phone].filter(Boolean).map(esc).join(' · ')}</span></span></div>`).join('')}</div>` : ''}`;
+    },
+    review: () => `${title('Review', 'Approve what Mak shares, or ask for changes.')}
+      <div class="section-title">${pending.length ? `${pending.length} waiting on you` : 'All caught up'}</div>
+      ${d.reviews.length ? `<div class="list">${[...d.reviews].sort((a, b) => (a.status === 'pending' ? -1 : 0) - (b.status === 'pending' ? -1 : 0) || String(b.updated_at || '').localeCompare(String(a.updated_at || ''))).map(r => `<button class="row" data-review="${esc(r.id)}"><span class="grow"><b>${esc(r.title)}</b><span class="sub">${r.kind === 'run-of-show' ? 'Run of show' : 'Document'}${r.version > 1 ? ' · version ' + esc(r.version) : ''}</span></span>${statusPill(r.status)}<span class="chev"></span></button>`).join('')}</div>` : `<div class="list"><div class="row"><span class="grow muted">When Mak shares your run of show or other plans, they'll show up here.</span></div></div>`}`,
+    pay: () => `${title('Payments')}
+      ${d.payments.length ? `<div class="section-title">Your balance</div><div class="pay-card"><div class="big">${money(total - paid)}</div><div class="of">left of ${money(total)} total · ${money(paid)} paid</div><div class="bar"><i style="width:${total ? Math.min(100, paid / total * 100) : 0}%"></i></div></div>
+        <div class="section-title">Schedule</div>
+        <div class="list">${[...d.payments].sort(byDate('due_date')).map(p => { const dd = p.due_date ? daysUntil(p.due_date) : null; return `<div class="row"><span class="grow"><b>${esc(p.label)}</b><span class="sub">${p.paid_on ? 'Paid ' + esc(fmtDate(p.paid_on)) : p.due_date ? 'Due ' + esc(fmtDate(p.due_date, { weekday: 'short', month: 'short', day: 'numeric' })) : ''}</span></span><span class="end"><b style="color:var(--ink)">${money(p.amount)}</b><br>${p.paid_on ? '<span class="pill ok">Paid</span>' : dd !== null && dd < 0 ? '<span class="pill red">Past due</span>' : dd !== null && dd <= 14 ? '<span class="pill amber">Due soon</span>' : '<span class="pill dim">Upcoming</span>'}</span></div>`; }).join('')}</div>
+        ${howToPayHTML()}` : '<div class="section-title">&nbsp;</div><div class="list"><div class="row"><span class="grow muted">Your payment schedule will show here.</span></div></div>'}`,
+    files: () => `${title('Files', 'Share photos, your guest list or anything else with Mak.')}
+      <div class="section-title">&nbsp;</div>
+      <label class="btn primary block" style="cursor:pointer">${ICONS.upload.replace('<svg', '<svg width="22" height="22"')} Upload a photo or file<input type="file" id="cfile" multiple hidden accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.csv,.txt"></label>
+      <div class="section-title">${d.files.length ? 'Shared files' : ''}</div>
+      ${d.files.length ? `<div class="list">${[...d.files].sort(byDate('created_at')).reverse().map(f => `<button class="row" data-file="${esc(f.id)}"><span class="grow"><b>${esc(f.name)}</b><span class="sub">From ${f.uploaded_by === 'client' ? 'you' : 'Mak'} · ${esc(fmtDate(f.created_at, { month: 'short', day: 'numeric' }))}${f.size ? ' · ' + esc(fmtSize(f.size)) : ''}</span></span><span class="chev"></span></button>`).join('')}</div>` : ''}`,
+  };
 
+  root.innerHTML = `<div class="wrap app">${banner}${screens[clientTab]()}</div>
+    <nav class="tabbar" aria-label="Portal sections"><div class="in" role="tablist">${CLIENT_TABS.map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${clientTab === k}">${ICONS[k]}<span>${l}</span>${k === 'review' && pending.length ? `<span class="badge">${pending.length}</span>` : ''}</button>`).join('')}</div></nav>`;
+
+  const show = k => { clientTab = k; try { history.replaceState(null, '', '#' + k); } catch (e) {} renderClient(root, c, d, reload, preview); window.scrollTo(0, 0); };
+  root.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => show(b.dataset.tab)));
+  root.querySelectorAll('[data-go]').forEach(b => {
+    b.addEventListener('click', e => { if (e.target.closest('a')) return; show(b.dataset.go); });
+    b.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.target.closest('a')) show(b.dataset.go); });
+  });
   const pv = $('#pvPick'); if (pv) pv.addEventListener('change', () => { sessionStorage.setItem('mak-preview-client', pv.value); reload(); });
   root.querySelectorAll('[data-review]').forEach(b => b.addEventListener('click', () => preview ? toast('Preview only: your client approves this from their own login.') : openClientReview(d.reviews.find(r => r.id === b.dataset.review), c, d, reload)));
   root.querySelectorAll('[data-file]').forEach(b => b.addEventListener('click', () => openFile(d.files.find(f => f.id === b.dataset.file))));
-  $('#cfile').addEventListener('change', async e => {
+  const cf = $('#cfile');
+  if (cf) cf.addEventListener('change', async e => {
     for (const file of [...e.target.files]) {
       toast('Uploading ' + file.name + '…');
       try { await DB.upload(c.id, file, 'client'); toast(file.name + ' shared with Mak'); } catch (err) { toast(errMsg(err)); }
@@ -465,12 +490,12 @@ function renderClient(root, c, d, reload, preview) {
 function openClientReview(r, c, d, reload) {
   if (!r) return;
   const comments = d.comments.filter(x => x.review_id === r.id);
-  const m = modal(`<header><div><div class="eyebrow">${r.kind === 'run-of-show' ? 'Run of show' : 'For your review'}${r.version > 1 ? ' · version ' + esc(r.version) : ''}</div><h2>${esc(r.title)}</h2></div><button class="btn ghost sm" data-close>Close</button></header>
-    <div>${statusPill(r.status)}</div>
+  const m = modal(`<header><div><div class="eyebrow">${r.kind === 'run-of-show' ? 'Run of show' : 'For your review'}${r.version > 1 ? ' · version ' + esc(r.version) : ''}</div><h2>${esc(r.title)}</h2><div style="margin-top:8px">${statusPill(r.status)}</div></div><button class="btn sm" data-close>Done</button></header>
     ${reviewBodyHTML(r)}
     ${threadHTML(comments, c.name)}
-    ${r.status === 'pending' ? `<div style="display:flex;flex-direction:column;gap:10px"><label class="f">Anything to change? (optional for approvals)<textarea id="note" placeholder="Example: Can we move the first look to 2:00?"></textarea></label>
-      <div class="actions"><button class="btn primary" data-act="approved">Looks perfect, approve</button><button class="btn" data-act="changes">Request changes</button></div></div>`
+    ${r.status === 'pending' ? `<div style="display:flex;flex-direction:column;gap:12px"><button class="btn primary block" data-act="approved">👍  Looks perfect, approve</button>
+      <label class="f" style="margin-top:6px">Want something changed? Tell Mak here:<textarea id="note" placeholder="Example: Can we move the first look to 2:00?"></textarea></label>
+      <button class="btn block" data-act="changes">Send my changes to Mak</button></div>`
     : r.status === 'changes' ? `<p class="muted" style="margin:0">Thanks! Mak is updating this and will share a new version here.</p>` : `<p class="muted" style="margin:0">You approved this. Need a change anyway? Text Mak at ${esc(CFG.PHONE)}.</p>`}`);
   m.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', async () => {
     const note = m.querySelector('#note').value.trim();
