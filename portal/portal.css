@@ -215,3 +215,23 @@ label.c input { width: 22px; height: 22px; accent-color: var(--brand); }
 .idea-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px; }
 .idea { border: 0; padding: 0; border-radius: 12px; overflow: hidden; aspect-ratio: 1; background: var(--brand-soft); cursor: pointer; max-width: 100%; }
 .idea img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* ---------- AI Design Studio ---------- */
+.studio-card { margin-top: 14px; border-radius: 22px; padding: 18px; color: #fff; background: linear-gradient(135deg, #4FC9C0, #2A9D93); box-shadow: 0 10px 28px rgba(42, 157, 147, 0.25); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.studio-card b { display: block; font-size: 20px; }
+.studio-card span { font-size: 15px; opacity: 0.95; }
+.studio-card .btn { background: #fff; color: var(--tint); }
+.studio-step { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: var(--radius); background: var(--bg); }
+.studio-step > b { font-size: 17px; }
+.f-label { font-size: 14px; font-weight: 600; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--sep); background: var(--card); color: var(--ink); border-radius: 999px; padding: 8px 13px; font-size: 15px; cursor: pointer; min-height: 38px; }
+.chip[aria-pressed="true"] { background: var(--tint); border-color: var(--tint); color: #fff; }
+.st-prev, .st-result { width: 100%; max-width: 100%; border-radius: 14px; background: var(--brand-soft); display: block; }
+.st-prev { max-height: 260px; object-fit: cover; }
+.st-result { min-height: 200px; object-fit: contain; }
+.msg { font-size: 15px; color: var(--muted); min-height: 1.4em; margin: 0; }
+.msg.bad { color: var(--red); }
+.idea { position: relative; }
+.idea[aria-pressed="true"] { outline: 3px solid var(--tint); outline-offset: -3px; }
+.idea-tag { position: absolute; left: 6px; bottom: 6px; background: rgba(255, 255, 255, 0.92); color: var(--ink); font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }

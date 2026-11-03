@@ -44,6 +44,7 @@ function modal(html) {
   bg.innerHTML = `<div class="modal" role="dialog" aria-modal="true">${html}</div>`;
   bg.addEventListener('click', e => { if (e.target === bg || e.target.closest('[data-close]')) closeModal(); });
   document.body.appendChild(bg); document.body.style.overflow = 'hidden';
+  bg.querySelectorAll('img[data-path]').forEach(async img => { try { img.src = await DB.pathUrl(img.dataset.path); } catch (e) {} });
   const f = bg.querySelector('[data-close], button, input, textarea'); if (f) f.focus();
   return bg.querySelector('.modal');
 }
@@ -146,7 +147,7 @@ function buildPlan(clientId, pkg, eventDate, bookedOn, totalFee) {
 }
 
 /* ---------- data stores ---------- */
-const TABLES = ['clients', 'milestones', 'reviews', 'comments', 'payments', 'meetings', 'vendors', 'files', 'admin_notes', 'hub_items', 'client_links'];
+const TABLES = ['clients', 'milestones', 'reviews', 'comments', 'payments', 'meetings', 'vendors', 'files', 'admin_notes', 'hub_items', 'client_links', 'designs'];
 // Planning Hub starter list for sample mode (the live list comes from the hub_items table).
 const HUB_SAMPLE = [
   ['tool', 'wedding', 'Website & RSVPs', 'Zola wedding website', 'https://www.zola.com/wedding-planning/website', 'Free website with RSVPs, your story, travel info and registry in one place.'],
@@ -237,6 +238,10 @@ const Demo = (() => {
     async fileUrl(f) { return f.data_url; },
     async removeFile(f) { return this.remove('files', f.id); },
     resetSample() { localStorage.removeItem(KEY); db = null; },
+    async putImage() { throw new Error('The design studio only works in the live portal.'); },
+    async design() { throw new Error('The design studio only works in the live portal.'); },
+    async pathUrl() { return ''; },
+    async copyPath() { throw new Error('Sample mode.'); },
   };
 })();
 
@@ -260,6 +265,7 @@ const Live = (() => {
       let q = sb.from(table).select('*');
       if (clientId && table === 'clients') q = q.eq('id', clientId);
       else if (clientId && table !== 'comments' && table !== 'hub_items') q = q.eq('client_id', clientId);
+      if (table === 'designs') q = q.order('created_at', { ascending: false });
       return must(await q);
     },
     async myClient(email) { return (must(await sb.from('clients').select('*').eq('email', String(email || '').toLowerCase()).limit(1)) || [])[0] || null; },
@@ -277,6 +283,16 @@ const Live = (() => {
     async getNotes(clientId) { const r = must(await sb.from('admin_notes').select('notes').eq('client_id', clientId).maybeSingle()); return r ? r.notes || '' : ''; },
     async saveNotes(clientId, notes) { must(await sb.from('admin_notes').upsert({ client_id: clientId, notes, updated_at: new Date().toISOString() })); },
     async fileUrl(f) { return must(await sb.storage.from(BUCKET).createSignedUrl(f.path, 3600)).signedUrl; },
+    async pathUrl(path) { return must(await sb.storage.from(BUCKET).createSignedUrl(path, 3600)).signedUrl; },
+    async copyPath(from, to) { must(await sb.storage.from(BUCKET).copy(from, to)); },
+    async putImage(folder, blob) { const path = folder + '/room-' + uid() + '.jpg'; must(await sb.storage.from(BUCKET).upload(path, blob, { contentType: 'image/jpeg' })); return path; },
+    // The Gemini call happens in the design-room Edge Function, so the key never reaches a phone.
+    async design(body) {
+      const { data, error } = await sb.functions.invoke('design-room', { body });
+      if (error) { let msg = error.message; try { const j = await error.context.json(); msg = j.error || msg; } catch (e) {} throw new Error(msg); }
+      if (data && data.error) throw new Error(data.error);
+      return data.design;
+    },
     async removeFile(f) { if (f.path) await sb.storage.from(BUCKET).remove([f.path]); return this.remove('files', f.id); },
   };
 })();
@@ -348,6 +364,7 @@ function reviewBodyHTML(r) {
   if (r.kind === 'run-of-show' && Array.isArray(b.rows) && b.rows.length) {
     html += `<div class="list">${b.rows.map(x => `<div class="row" style="align-items:flex-start"><span style="flex:none;width:86px;font-weight:700;color:var(--tint);font-variant-numeric:tabular-nums">${esc(x.time)}</span><span class="grow"><b>${esc(x.title)}</b>${x.notes ? `<span class="sub">${esc(x.notes)}</span>` : ''}</span></div>`).join('')}</div>`;
   }
+  if (b.image_path) html += `<img class="st-result" data-path="${esc(b.image_path)}" alt="Design for your review">`;
   if (b.text) html += `<div class="doc">${String(b.text).split(/\n{2,}/).map(p => `<p>${esc(p)}</p>`).join('')}</div>`;
   if (r.link) html += `<div><a class="btn sm" href="${esc(r.link)}" target="_blank" rel="noopener">Open the full document</a></div>`;
   return html || '<p class="empty">Nothing attached yet.</p>';
@@ -414,6 +431,7 @@ const ICONS = {
   mail: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.5 6.5 8.5 6.5 8.5-6.5"/></svg>',
   call: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4M12 13v4M10 15h4"/></svg>',
   upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>',
+  spark: '<svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M12 2l1.8 5.6L19.5 9l-5.7 1.5L12 16l-1.8-5.5L4.5 9l5.7-1.4zM19 15l.9 2.3 2.1.7-2.1.8L19 21l-.9-2.2-2.1-.8 2.1-.7zM5 15l.7 1.7 1.8.6-1.8.6L5 20l-.7-2.1-1.8-.6 1.8-.6z"/></svg>',
   plan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg>',
   link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>',
   star: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>',
@@ -470,7 +488,7 @@ function renderClient(root, c, d, reload, preview) {
     },
     review: () => `${title('Review', 'Approve what Mak shares, or ask for changes.')}
       <div class="section-title">${pending.length ? `${pending.length} waiting on you` : 'All caught up'}</div>
-      ${d.reviews.length ? `<div class="list">${[...d.reviews].sort((a, b) => (a.status === 'pending' ? -1 : 0) - (b.status === 'pending' ? -1 : 0) || String(b.updated_at || '').localeCompare(String(a.updated_at || ''))).map(r => `<button class="row" data-review="${esc(r.id)}"><span class="grow"><b>${esc(r.title)}</b><span class="sub">${r.kind === 'run-of-show' ? 'Run of show' : 'Document'}${r.version > 1 ? ' · version ' + esc(r.version) : ''}</span></span>${statusPill(r.status)}<span class="chev"></span></button>`).join('')}</div>` : `<div class="list"><div class="row"><span class="grow muted">When Mak shares your run of show or other plans, they'll show up here.</span></div></div>`}`,
+      ${d.reviews.length ? `<div class="list">${[...d.reviews].sort((a, b) => (a.status === 'pending' ? -1 : 0) - (b.status === 'pending' ? -1 : 0) || String(b.updated_at || '').localeCompare(String(a.updated_at || ''))).map(r => `<button class="row" data-review="${esc(r.id)}"><span class="grow"><b>${esc(r.title)}</b><span class="sub">${r.kind === 'run-of-show' ? 'Run of show' : r.kind === 'design' ? 'Design' : 'Document'}${r.version > 1 ? ' · version ' + esc(r.version) : ''}</span></span>${statusPill(r.status)}<span class="chev"></span></button>`).join('')}</div>` : `<div class="list"><div class="row"><span class="grow muted">When Mak shares your run of show or other plans, they'll show up here.</span></div></div>`}`,
     pay: () => `${title('Payments')}
       ${d.payments.length ? `<div class="section-title">Your balance</div><div class="pay-card"><div class="big">${money(total - paid)}</div><div class="of">left of ${money(total)} total · ${money(paid)} paid</div><div class="bar"><i style="width:${total ? Math.min(100, paid / total * 100) : 0}%"></i></div></div>
         <div class="section-title">Schedule</div>
@@ -527,6 +545,119 @@ function renderClient(root, c, d, reload, preview) {
   });
 }
 
+/* ---------- AI Design Studio (shared by Mak's admin and the client Resources tab) ---------- */
+const VIBES = ['Garden romantic', 'Modern black-tie', 'Classic elegant', 'Rustic chic', 'Boho', 'Glam', 'Minimal modern', 'Tropical', 'Western ranch', 'Corporate clean'];
+const ELEMENTS = ['Round guest tables', 'Long banquet tables', 'Sweetheart or head table', 'Ceremony arch', 'Aisle florals', 'Dance floor', 'Bar', 'Lounge seating', 'Ceiling draping', 'Uplighting', 'String lights', 'Candles', 'Tall centerpieces', 'Low centerpieces', 'Welcome sign area', 'Cake table', 'Photo backdrop'];
+const BRIEF_KEY = 'mak-studio-brief-v1';
+// Phone photos are huge; shrink to 1600px so uploads and designs are fast and cheap.
+function shrinkPhoto(file) {
+  return new Promise((ok, bad) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, 1600 / Math.max(img.width, img.height));
+      const cv = document.createElement('canvas'); cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
+      cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height); URL.revokeObjectURL(url);
+      cv.toBlob(b => b ? ok(b) : bad(new Error('Could not read that photo.')), 'image/jpeg', 0.85);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); bad(new Error('That file is not a photo this phone can open. Try a JPG or a screenshot.')); };
+    img.src = url;
+  });
+}
+function openStudio({ clientId, client, inspiration = [], byAdmin, onSaved, title = '' }) {
+  let saved = {}; try { saved = JSON.parse(localStorage.getItem(BRIEF_KEY) || '{}'); } catch (e) {}
+  const b = { event: (client && (client.event_type || client.package)) || saved.event || 'a wedding reception', vibe: saved.vibe || '', colors: saved.colors || '', elements: saved.elements || ['Round guest tables', 'Low centerpieces', 'Candles'], guests: (client && client.guests) || saved.guests || '', notes: '' };
+  let photo = null, refs = [];
+  const m = modal(`<header><div><div class="eyebrow">Design studio</div><h2>${client ? esc(firstName(client.name)) + '’s design' : 'New venue design'}</h2></div><button class="btn ghost sm" data-close>Close</button></header>
+    <div class="studio-step"><b>1. The room</b><span class="dim">Stand in a corner and capture as much of the space as you can.</span>
+      <img id="stPrev" class="st-prev" alt="" hidden>
+      <label class="btn primary block" style="cursor:pointer">${ICONS.upload.replace('<svg', '<svg width="22" height="22"')} <span id="stPick">Take or choose a photo</span><input type="file" id="stFile" accept="image/*" hidden></label></div>
+    <div class="studio-step"><b>2. The look</b>
+      <div class="form-grid"><label class="f">What's the event<input type="text" id="stEvent" value="${esc(b.event)}" placeholder="wedding reception"></label><label class="f">About how many guests<input type="number" id="stGuests" value="${esc(b.guests)}" placeholder="120"></label></div>
+      <span class="f-label">Style</span><div class="chips" id="stVibe">${VIBES.map(v => `<button type="button" class="chip" aria-pressed="${b.vibe === v}">${esc(v)}</button>`).join('')}</div>
+      <label class="f">Colors<input type="text" id="stColors" value="${esc(b.colors)}" placeholder="sage green, ivory and gold"></label>
+      <span class="f-label">Include</span><div class="chips" id="stEls">${ELEMENTS.map(v => `<button type="button" class="chip" aria-pressed="${b.elements.includes(v)}">${esc(v)}</button>`).join('')}</div>
+      <label class="f">Anything else<textarea id="stNotes" placeholder="Pampas grass, gold chargers, no pink">${esc(b.notes)}</textarea></label>
+      ${inspiration.length ? `<span class="f-label">Use inspiration photos (up to 2)</span><div class="idea-grid" id="stRefs">${inspiration.slice(0, 12).map(f => `<button type="button" class="idea" data-ref="${esc(f.path)}" aria-pressed="false"><img alt="" data-path="${esc(f.path)}"></button>`).join('')}</div>` : ''}
+    </div>
+    <div class="actions"><button class="btn primary" id="stGo">${ICONS.spark} Design it</button></div>
+    <p class="msg" id="stMsg" role="status"></p>`);
+  m.querySelectorAll('img[data-path]').forEach(async img => { try { img.src = await DB.pathUrl(img.dataset.path); } catch (e) {} });
+  m.querySelector('#stVibe').addEventListener('click', e => { const c = e.target.closest('.chip'); if (!c) return; const on = c.getAttribute('aria-pressed') !== 'true'; m.querySelectorAll('#stVibe .chip').forEach(x => x.setAttribute('aria-pressed', 'false')); c.setAttribute('aria-pressed', String(on)); });
+  m.querySelector('#stEls').addEventListener('click', e => { const c = e.target.closest('.chip'); if (c) c.setAttribute('aria-pressed', String(c.getAttribute('aria-pressed') !== 'true')); });
+  const rf = m.querySelector('#stRefs');
+  if (rf) rf.addEventListener('click', e => { const c = e.target.closest('[data-ref]'); if (!c) return; const on = c.getAttribute('aria-pressed') !== 'true'; if (on && refs.length >= 2) return toast('Pick up to 2 inspiration photos.'); c.setAttribute('aria-pressed', String(on)); refs = [...rf.querySelectorAll('[aria-pressed="true"]')].map(x => x.dataset.ref); });
+  m.querySelector('#stFile').addEventListener('change', async e => {
+    const f = e.target.files[0]; if (!f) return;
+    try { photo = await shrinkPhoto(f); const pv = m.querySelector('#stPrev'); pv.src = URL.createObjectURL(photo); pv.hidden = false; m.querySelector('#stPick').textContent = 'Use a different photo'; }
+    catch (err) { toast(errMsg(err)); }
+  });
+  m.querySelector('#stGo').addEventListener('click', async e => {
+    if (!photo) return toast('Add a photo of the room first.');
+    const brief = { event: m.querySelector('#stEvent').value.trim(), guests: m.querySelector('#stGuests').value.trim(), vibe: (m.querySelector('#stVibe [aria-pressed="true"]') || {}).textContent || '', colors: m.querySelector('#stColors').value.trim(), elements: [...m.querySelectorAll('#stEls [aria-pressed="true"]')].map(x => x.textContent), notes: m.querySelector('#stNotes').value.trim() };
+    try { localStorage.setItem(BRIEF_KEY, JSON.stringify(Object.assign({}, brief, { notes: '' }))); } catch (err) {}
+    const btn = e.target.closest('button'), msg = m.querySelector('#stMsg'); btn.disabled = true;
+    const t0 = Date.now(), tick = setInterval(() => { msg.textContent = `Designing your space… ${Math.round((Date.now() - t0) / 1000)}s (usually 10–40 seconds)`; }, 1000);
+    try {
+      const room_path = await DB.putImage(clientId || 'studio', photo);
+      const design = await DB.design({ client_id: clientId, room_path, ref_paths: refs, brief, title: title || brief.vibe || 'Design' });
+      clearInterval(tick); closeModal(); if (onSaved) onSaved(); showDesign(design, { byAdmin, onChange: onSaved });
+    } catch (err) { clearInterval(tick); btn.disabled = false; msg.textContent = errMsg(err); msg.className = 'msg bad'; }
+  });
+}
+// One design: before/after, tweak it, and (for Mak) share it with the client.
+async function showDesign(dz, { byAdmin, onChange }) {
+  if (!dz) return;
+  const br = dz.brief || {};
+  const m = modal(`<header><div><div class="eyebrow">${esc(fmtDate(dz.created_at, { month: 'short', day: 'numeric' }))}${br.vibe ? ' · ' + esc(br.vibe) : ''}</div><h2>${esc(dz.title || 'Design')}</h2></div><button class="btn ghost sm" data-close>Close</button></header>
+    <div class="chips" role="tablist"><button class="chip" data-v="after" aria-pressed="true">Design</button><button class="chip" data-v="before" aria-pressed="false">Original photo</button></div>
+    <img class="st-result" id="dzImg" alt="AI design of the room">
+    <p class="dim" style="margin:0;font-size:14px">${esc([br.colors, (br.elements || []).join(', '), br.tweak && 'Change: ' + br.tweak].filter(Boolean).join(' · '))}</p>
+    <label class="f">Change something<input type="text" id="dzTweak" placeholder="Make the linens blush and add more candles"></label>
+    <div class="actions"><button class="btn primary" id="dzGo">${ICONS.spark} Make this change</button><a class="btn" id="dzOpen" target="_blank" rel="noopener">Open full size</a>
+<button class="btn danger" id="dzDel">Delete</button></div>
+    ${byAdmin ? `<div class="studio-step"><b>Send to a client for approval</b><span class="dim">It shows up under Review in their portal, and they get an email to approve it or ask for changes.</span>
+      ${dz.client_id ? '' : `<label class="f">Client<select id="dzClient"><option value="">Choose a client</option></select></label>`}
+      <label class="f">Title<input type="text" id="dzTitle" value="${esc(dz.title && dz.title !== 'Design' ? dz.title + ' design' : 'Reception design')}"></label>
+      <label class="f">Note to them<textarea id="dzNote" placeholder="Here's the look we talked about! Tell me what you love or want changed."></textarea></label>
+      <div class="actions"><button class="btn primary" id="dzSend">Send for approval</button></div></div>` : ''}
+    <p class="msg" id="dzMsg" role="status"></p>`);
+  const urls = {};
+  const show = async v => { m.querySelectorAll('[data-v]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.v === v))); const p = v === 'after' ? dz.result_path : dz.room_path; try { urls[p] = urls[p] || await DB.pathUrl(p); m.querySelector('#dzImg').src = urls[p]; m.querySelector('#dzOpen').href = urls[p]; } catch (e) {} };
+  show('after');
+  m.querySelectorAll('[data-v]').forEach(x => x.addEventListener('click', () => show(x.dataset.v)));
+  m.querySelector('#dzGo').addEventListener('click', async e => {
+    const tweak = m.querySelector('#dzTweak').value.trim(); if (!tweak) return toast('Type what you want changed.');
+    const btn = e.target.closest('button'), msg = m.querySelector('#dzMsg'); btn.disabled = true;
+    const t0 = Date.now(), tick = setInterval(() => { msg.textContent = `Making the change… ${Math.round((Date.now() - t0) / 1000)}s`; }, 1000);
+    try {
+      const next = await DB.design({ client_id: dz.client_id, room_path: dz.result_path, parent_id: dz.id, brief: Object.assign({}, br, { tweak }), title: dz.title });
+      clearInterval(tick); if (onChange) onChange(); showDesign(next, { byAdmin, onChange });
+    } catch (err) { clearInterval(tick); btn.disabled = false; msg.textContent = errMsg(err); msg.className = 'msg bad'; }
+  });
+  const pickC = m.querySelector('#dzClient');
+  if (pickC) DB.list('clients').then(cs => { pickC.innerHTML += cs.sort((a, b) => String(a.name).localeCompare(String(b.name))).map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join(''); }).catch(() => {});
+  const send = m.querySelector('#dzSend');
+  if (send) send.addEventListener('click', async () => {
+    const cid = dz.client_id || (pickC && pickC.value);
+    if (!cid) return toast('Choose which client to send it to.');
+    send.disabled = true;
+    try {
+      // Venue designs live in Mak's private folder; copy into the client's folder so they can see it.
+      let img = dz.result_path;
+      if (!img.startsWith(cid + '/')) { const to = cid + '/design-' + uid() + img.slice(img.lastIndexOf('.')); await DB.copyPath(img, to); img = to; }
+      const note = m.querySelector('#dzNote').value.trim();
+      const rv = await DB.insert('reviews', { client_id: cid, title: m.querySelector('#dzTitle').value.trim() || 'Design', kind: 'design', status: 'pending', version: 1, link: '', body: { image_path: img, text: note }, updated_at: new Date().toISOString() });
+      if (note) await DB.insert('comments', { review_id: rv.id, author: 'mak', body: note });
+      await DB.update('designs', dz.id, { shared: true }); dz.shared = true;
+      closeModal(); toast('Sent! It shows under Review in their portal, and they get an email.'); if (onChange) onChange();
+    } catch (e) { send.disabled = false; toast(errMsg(e)); }
+  });
+  const del = m.querySelector('#dzDel');
+  del.addEventListener('click', async () => {
+    if (!del.dataset.armed) { del.dataset.armed = '1'; del.textContent = 'Tap again to delete'; return; }
+    try { await DB.remove('designs', dz.id); closeModal(); toast('Design deleted'); if (onChange) onChange(); } catch (e) { toast(errMsg(e)); }
+  });
+}
 const audienceOf = c => /wedding/i.test((c.package || '') + ' ' + (c.event_type || '')) ? 'wedding' : 'event';
 // Tips are tied to "months out". The current tip is the one whose window has opened most recently.
 function tipsFor(tips, days) {
@@ -627,11 +758,15 @@ function readInputs(el, attr = 'data-k') {
 
 async function startAdmin() {
   const root = $('#app'), head = $('#top');
-  const state = { clients: [], cur: null, tab: 'overview', data: null, q: '', view: 'clients', hub: [] };
+  const state = { clients: [], cur: null, tab: 'overview', data: null, q: '', view: 'clients', hub: [], studioFor: '' };
   const drawHead = user => {
-    head.innerHTML = `<div class="wrap wide">${brandHTML('Client portal · Admin')}<div class="who">${CFG.TOOLKIT_URL ? `<a class="btn ghost sm" href="${esc(CFG.TOOLKIT_URL)}">Toolkit</a>` : ''}<button class="btn ghost sm" id="hubBtn">Client resources</button><a class="btn ghost sm" href="./">Client view</a>${user ? '<button class="btn ghost sm" id="out">Sign out</button>' : ''}</div></div>`;
+    head.innerHTML = `<div class="wrap wide">${brandHTML('Client portal · Admin')}<div class="who">${CFG.TOOLKIT_URL ? `<a class="btn ghost sm" href="${esc(CFG.TOOLKIT_URL)}">Toolkit</a>` : ''}<button class="btn ghost sm" id="studioBtn">Design studio</button><button class="btn ghost sm" id="hubBtn">Client resources</button><a class="btn ghost sm" href="./">Client view</a>${user ? '<button class="btn ghost sm" id="out">Sign out</button>' : ''}</div></div>`;
     const o = $('#out'); if (o) o.addEventListener('click', async () => { await DB.signOut(); go(); });
-    const hb = $('#hubBtn'); if (hb) { hb.hidden = !user; hb.addEventListener('click', () => { state.view = state.view === 'hub' ? 'clients' : 'hub'; hb.textContent = state.view === 'hub' ? 'Clients' : 'Client resources'; draw(); }); }
+    const hb = $('#hubBtn'), sb2 = $('#studioBtn');
+    const label = () => { hb.textContent = state.view === 'hub' ? 'Clients' : 'Client resources'; sb2.textContent = state.view === 'studio' ? 'Clients' : 'Design studio'; };
+    if (hb) { hb.hidden = !user; hb.addEventListener('click', () => { state.view = state.view === 'hub' ? 'clients' : 'hub'; label(); draw(); }); }
+    if (sb2) { sb2.hidden = !user; sb2.addEventListener('click', () => { state.view = state.view === 'studio' ? 'clients' : 'studio'; label(); draw(); }); }
+    if (user && location.hash === '#studio') { state.view = 'studio'; label(); }
   };
   async function go() {
     const user = await DB.getUser();
@@ -659,6 +794,7 @@ async function startAdmin() {
   }
   function draw() {
     if (state.view === 'hub') return drawHub();
+    if (state.view === 'studio') return drawStudio();
     const ql = state.q.toLowerCase();
     const list = state.clients.filter(c => !ql || [c.name, c.partner, c.email, c.venue].some(v => String(v || '').toLowerCase().includes(ql)));
     root.innerHTML = `<div class="wrap wide">
@@ -675,6 +811,27 @@ async function startAdmin() {
     root.querySelectorAll('[data-c]').forEach(b => b.addEventListener('click', async () => { state.cur = state.clients.find(c => c.id === b.dataset.c); state.tab = 'overview'; await loadData(); draw(); }));
     const rd = $('#resetDemo'); if (rd) rd.addEventListener('click', () => { Demo.resetSample(); state.cur = null; loadClients(); });
     if (state.cur) wireDetail();
+  }
+  // Design studio: Mak's AI designs for venues (no client) and for any client.
+  async function drawStudio() {
+    let all = [];
+    try { all = await DB.list('designs'); }
+    catch (e) { root.innerHTML = `<div class="wrap wide"><section class="panel" style="margin-top:16px"><p class="empty">The design studio isn't set up yet (${esc(errMsg(e))}).</p></section></div>`; return; }
+    const pick = state.studioFor ?? '';
+    const forClient = pick ? state.clients.find(c => c.id === pick) : null;
+    const list = all.filter(x => (x.client_id || '') === pick);
+    root.innerHTML = `<div class="wrap wide"><section class="panel glow" style="margin-top:16px"><header><div><div class="eyebrow">AI, powered by Google Gemini</div><h2 style="font-size:clamp(24px,4vw,34px)">Design studio</h2><div class="dim" style="margin-top:4px">Only you can use this. Snap a room, pick a look and see it set up. Send the ones you love to a client's portal for approval.</div></div></header>
+      <div class="actions" style="margin:12px 0"><label class="f" style="min-width:240px">Designing for<select id="stFor"><option value="">Venues and my own ideas</option>${state.clients.map(c => `<option value="${esc(c.id)}" ${c.id === pick ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label><button class="btn primary" id="stNew">${ICONS.spark} New design</button></div>
+      ${list.length ? `<div class="idea-grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr))">${list.map(x => `<button class="idea" data-dz="${esc(x.id)}" aria-label="Open design"><img alt="" data-path="${esc(x.result_path)}">${x.shared ? '<span class="idea-tag">Sent for approval</span>' : ''}</button>`).join('')}</div>` : '<p class="empty">No designs here yet. Tap New design and snap a photo of the room.</p>'}
+      </section></div>`;
+    root.querySelectorAll('img[data-path]').forEach(async img => { try { img.src = await DB.pathUrl(img.dataset.path); } catch (e) {} });
+    $('#stFor').addEventListener('change', e => { state.studioFor = e.target.value; drawStudio(); });
+    $('#stNew').addEventListener('click', async () => {
+      let insp = [];
+      if (forClient) { try { insp = (await DB.list('files', forClient.id)).filter(f => f.tag === 'inspiration'); } catch (e) {} }
+      openStudio({ clientId: forClient ? forClient.id : null, client: forClient, inspiration: insp, byAdmin: true, onSaved: drawStudio });
+    });
+    root.querySelectorAll('[data-dz]').forEach(b => b.addEventListener('click', () => showDesign(list.find(x => x.id === b.dataset.dz), { byAdmin: true, onChange: drawStudio })));
   }
   // Planning Hub: one list Mak keeps for every client. Clients see the items for their event type.
   const HUB_SECTIONS = [['vendor', 'Your preferred vendors', 'Shows first. Add the vendors you refer (and earn your 10% on).'], ['tool', 'Helpful websites', 'Websites and tools grouped by category.'], ['tip', 'Tips by months out', 'Each client sees the tip for where they are in planning. "Months out" = when it starts showing.']];
@@ -717,7 +874,7 @@ async function startAdmin() {
         <div class="copybox" style="margin-top:14px" id="inviteText">Hi ${esc(firstName(c.name))}! Your MAK(e) It Happen client portal is ready. This is where you'll see your timeline, review your run of show, and keep track of payments.\n\nCreate your account here with ${esc(c.email)}:\n${esc(portalURL)}?signup</div>`,
       timeline: () => crudHTML('milestones', [...d.milestones].sort(byDate('due_date'))) + `<div class="actions" style="margin-top:12px"><button class="btn" id="rebuild">Rebuild from package template</button></div>`,
       reviews: () => `<div class="actions" style="margin-bottom:12px"><button class="btn primary" id="newR">Share something for review</button></div>
-        <div class="items">${[...d.reviews].sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || ''))).map(r => `<button class="item" data-r="${esc(r.id)}"><span class="t"><b>${esc(r.title)}</b><span>${r.kind === 'run-of-show' ? 'Run of show' : 'Document'} · v${esc(r.version || 1)} · ${d.comments.filter(x => x.review_id === r.id).length} message(s)</span></span>${statusPill(r.status, true)}</button>`).join('') || '<p class="empty">Nothing shared yet.</p>'}</div>`,
+        <div class="items">${[...d.reviews].sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || ''))).map(r => `<button class="item" data-r="${esc(r.id)}"><span class="t"><b>${esc(r.title)}</b><span>${r.kind === 'run-of-show' ? 'Run of show' : r.kind === 'design' ? 'Design' : 'Document'} · v${esc(r.version || 1)} · ${d.comments.filter(x => x.review_id === r.id).length} message(s)</span></span>${statusPill(r.status, true)}</button>`).join('') || '<p class="empty">Nothing shared yet.</p>'}</div>`,
       payments: () => crudHTML('payments', [...d.payments].sort(byDate('due_date'))),
       meetings: () => crudHTML('meetings', [...d.meetings].sort(byDate('starts_at'))),
       vendors: () => crudHTML('vendors', d.vendors),
@@ -782,7 +939,7 @@ async function startAdmin() {
   }
   function adminReview(r) {
     const d = state.data, comments = d.comments.filter(x => x.review_id === r.id);
-    const m = modal(`<header><div><div class="eyebrow">${r.kind === 'run-of-show' ? 'Run of show' : 'Document'} · v${esc(r.version || 1)}</div><h2>${esc(r.title)}</h2></div><button class="btn ghost sm" data-close>Close</button></header>
+    const m = modal(`<header><div><div class="eyebrow">${r.kind === 'run-of-show' ? 'Run of show' : r.kind === 'design' ? 'Design' : 'Document'} · v${esc(r.version || 1)}</div><h2>${esc(r.title)}</h2></div><button class="btn ghost sm" data-close>Close</button></header>
       <div>${statusPill(r.status, true)}</div>${reviewBodyHTML(r)}${threadHTML(comments, state.cur.name)}
       <label class="f">Message to your client<textarea id="reply" placeholder="Updated the first look to 2:00!"></textarea></label>
       <div class="actions"><button class="btn primary" id="send">Send message</button><button class="btn" id="edit">Edit and share a new version</button><button class="btn danger" id="del">Delete</button></div>`);
@@ -816,6 +973,7 @@ async function startAdmin() {
       const body = { text: m.querySelector('#rx').value.trim() };
       if (kind.value === 'run-of-show') body.rows = rows.filter(x => x.time || x.title || x.notes);
       const patch = { title, kind: kind.value, body, link: m.querySelector('#rl').value.trim(), status: 'pending', updated_at: new Date().toISOString() };
+      if (r && r.kind === 'design') { patch.kind = 'design'; body.image_path = b.image_path; }
       try {
         if (isNew) await DB.insert('reviews', Object.assign({ client_id: state.cur.id, version: 1 }, patch));
         else {
