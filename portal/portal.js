@@ -418,7 +418,7 @@ const ICONS = {
   link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>',
   star: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>',
 };
-const CLIENT_TABS = [['home', 'Home'], ['timeline', 'Timeline'], ['plan', 'Plan'], ['review', 'Review'], ['pay', 'Payments'], ['files', 'Files']];
+const CLIENT_TABS = [['home', 'Home'], ['timeline', 'Timeline'], ['plan', 'Resources'], ['review', 'Review'], ['pay', 'Payments'], ['files', 'Files']];
 let clientTab = (location.hash.replace('#', '') === 'payments' ? 'pay' : location.hash.replace('#', '')) || 'home';
 
 function renderClient(root, c, d, reload, preview) {
@@ -484,7 +484,7 @@ function renderClient(root, c, d, reload, preview) {
       const linkRow = i => i.url ? `<a class="row with-icon" href="${esc(i.url)}" target="_blank" rel="noopener"><span class="ico">${ICONS.link}</span><span class="grow"><b>${esc(i.title)}</b>${i.note ? `<span class="sub">${esc(i.note)}</span>` : ''}</span><span class="chev"></span></a>`
         : `<div class="row with-icon"><span class="ico">${ICONS.star}</span><span class="grow"><b>${esc(i.title)}</b>${i.note ? `<span class="sub">${esc(i.note)}</span>` : ''}</span></div>`;
       const ideas = d.files.filter(f => f.tag === 'inspiration');
-      return `${title('Planning Hub', 'Mak’s favorite vendors, helpful websites and a place for your ideas.')}
+      return `${title('Resources', 'Mak’s favorite vendors, helpful links, tips and a place to save your ideas.')}
         ${now ? `<div class="section-title">Tip for right now</div><div class="tip-card"><b>${esc(now.title)}</b><p>${esc(now.note || '')}</p>${next ? `<span class="tip-next">Next up: ${esc(next.title)}</span>` : ''}</div>` : ''}
         <div class="section-title">Mak’s preferred vendors</div>
         ${vendors.length ? groups(vendors).map(([cat, list]) => `<div class="hub-cat">${esc(cat)}</div><div class="list">${list.map(linkRow).join('')}</div>`).join('') + '<p class="hub-note">Tell them Mak sent you. I only recommend people I trust to show up and do it right.</p>' : '<div class="list"><div class="row"><span class="grow muted">Mak is adding her favorite vendors here. Ask her anytime for a recommendation.</span></div></div>'}
@@ -629,9 +629,9 @@ async function startAdmin() {
   const root = $('#app'), head = $('#top');
   const state = { clients: [], cur: null, tab: 'overview', data: null, q: '', view: 'clients', hub: [] };
   const drawHead = user => {
-    head.innerHTML = `<div class="wrap wide">${brandHTML('Client portal · Admin')}<div class="who">${CFG.TOOLKIT_URL ? `<a class="btn ghost sm" href="${esc(CFG.TOOLKIT_URL)}">Toolkit</a>` : ''}<button class="btn ghost sm" id="hubBtn">Planning Hub</button><a class="btn ghost sm" href="./">Client view</a>${user ? '<button class="btn ghost sm" id="out">Sign out</button>' : ''}</div></div>`;
+    head.innerHTML = `<div class="wrap wide">${brandHTML('Client portal · Admin')}<div class="who">${CFG.TOOLKIT_URL ? `<a class="btn ghost sm" href="${esc(CFG.TOOLKIT_URL)}">Toolkit</a>` : ''}<button class="btn ghost sm" id="hubBtn">Client resources</button><a class="btn ghost sm" href="./">Client view</a>${user ? '<button class="btn ghost sm" id="out">Sign out</button>' : ''}</div></div>`;
     const o = $('#out'); if (o) o.addEventListener('click', async () => { await DB.signOut(); go(); });
-    const hb = $('#hubBtn'); if (hb) { hb.hidden = !user; hb.addEventListener('click', () => { state.view = state.view === 'hub' ? 'clients' : 'hub'; hb.textContent = state.view === 'hub' ? 'Clients' : 'Planning Hub'; draw(); }); }
+    const hb = $('#hubBtn'); if (hb) { hb.hidden = !user; hb.addEventListener('click', () => { state.view = state.view === 'hub' ? 'clients' : 'hub'; hb.textContent = state.view === 'hub' ? 'Clients' : 'Client resources'; draw(); }); }
   };
   async function go() {
     const user = await DB.getUser();
@@ -681,8 +681,8 @@ async function startAdmin() {
   const HUB_FIELDS = s => [['title', s === 'tip' ? 'Tip headline' : 'Name', 'text'], ...(s === 'tip' ? [['months_out', 'Months out', 'number']] : [['category', 'Category', 'text'], ['url', 'Link (https://)', 'url']]), ['note', s === 'tip' ? 'Tip' : 'Short note for clients', 'text'], ['audience', 'Who sees it', 'select', [['all', 'Everyone'], ['wedding', 'Weddings'], ['event', 'Other events']]], ['sort', 'Order', 'number'], ['active', 'Showing', 'check']];
   async function drawHub() {
     try { state.hub = await DB.list('hub_items'); }
-    catch (e) { root.innerHTML = `<div class="wrap wide"><section class="panel" style="margin-top:16px"><p class="empty">The Planning Hub isn't set up in the database yet (${esc(errMsg(e))}).</p></section></div>`; return; }
-    root.innerHTML = `<div class="wrap wide"><section class="panel glow" style="margin-top:16px"><header><div><div class="eyebrow">Every client</div><h2 style="font-size:clamp(24px,4vw,34px)">Planning Hub</h2><div class="dim" style="margin-top:4px">What shows on the Plan tab in your clients' portals.</div></div></header>
+    catch (e) { root.innerHTML = `<div class="wrap wide"><section class="panel" style="margin-top:16px"><p class="empty">Client resources aren't set up in the database yet (${esc(errMsg(e))}).</p></section></div>`; return; }
+    root.innerHTML = `<div class="wrap wide"><section class="panel glow" style="margin-top:16px"><header><div><div class="eyebrow">Every client</div><h2 style="font-size:clamp(24px,4vw,34px)">Client resources</h2><div class="dim" style="margin-top:4px">What shows on the Resources tab in your clients' portals.</div></div></header>
       ${HUB_SECTIONS.map(([s, label, help]) => { const rows = state.hub.filter(i => i.section === s).sort((a, b) => (a.sort || 0) - (b.sort || 0)); return `<h3 style="margin:22px 0 4px">${esc(label)} <span class="dim" style="font-size:14px;font-weight:500">${rows.length}</span></h3><p class="dim" style="margin:0 0 10px;font-size:14px">${esc(help)}</p>
         <div class="erows">${rows.map(r => `<div class="erow" data-hrow="${esc(r.id)}">${HUB_FIELDS(s).map(f => inputHTML(f, r[f[0]], 'data-f')).join('')}<div class="actions"><button class="btn sm primary" data-hsave>Save</button><button class="btn sm danger" data-hdel>Delete</button></div></div>`).join('') || '<p class="empty">Nothing here yet.</p>'}</div>
         <div class="actions" style="margin-top:10px"><button class="btn" data-hadd="${s}">Add ${s === 'vendor' ? 'a vendor' : s === 'tool' ? 'a website' : 'a tip'}</button></div>`; }).join('')}
@@ -724,7 +724,7 @@ async function startAdmin() {
       files: () => `<div class="actions" style="margin-bottom:12px"><label class="btn primary" style="cursor:pointer">Upload files<input type="file" id="afile" multiple hidden></label><span class="dim" style="font-size:13px">Photos, contracts, PDFs. Your client sees everything here.</span></div>
         <ul class="mini">${[...d.files].sort(byDate('created_at')).reverse().map(f => `<li style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="min-width:0"><b style="overflow-wrap:anywhere">${esc(f.name)}</b><span>${f.tag === 'inspiration' ? 'Inspiration photo · ' : ''}${f.uploaded_by === 'client' ? 'From client' : 'From you'} · ${esc(fmtDate(f.created_at, { month: 'short', day: 'numeric' }))}${f.size ? ' · ' + esc(fmtSize(f.size)) : ''}</span></span><span class="actions"><button class="btn sm" data-fo="${esc(f.id)}">Open</button><button class="btn sm danger" data-fd="${esc(f.id)}">Delete</button></span></li>`).join('') || '<p class="empty">No files yet.</p>'}</ul>
         <h3 style="margin:22px 0 8px">Their saved links</h3>
-        <ul class="mini">${(d.links || []).map(l => `<li><b style="overflow-wrap:anywhere">${l.url ? `<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.title)}</a>` : esc(l.title)}</b><span>${esc(l.note || '')}${l.note ? ' · ' : ''}${esc(fmtDate(l.created_at, { month: 'short', day: 'numeric' }))}</span></li>`).join('') || '<p class="empty">They haven\'t saved any links yet. They add them on the Plan tab.</p>'}</ul>`,
+        <ul class="mini">${(d.links || []).map(l => `<li><b style="overflow-wrap:anywhere">${l.url ? `<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.title)}</a>` : esc(l.title)}</b><span>${esc(l.note || '')}${l.note ? ' · ' : ''}${esc(fmtDate(l.created_at, { month: 'short', day: 'numeric' }))}</span></li>`).join('') || '<p class="empty">They haven\'t saved any links yet. They add them on the Resources tab.</p>'}</ul>`,
     };
     return `<section class="panel glow"><header><div><div class="eyebrow">${esc(c.package || '')}</div><h2 style="font-size:clamp(24px,4vw,34px)">${esc(c.name)}${c.partner ? ' & ' + esc(c.partner) : ''}</h2>
       <div class="dim" style="margin-top:4px">${c.event_date ? esc(fmtDate(c.event_date, { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })) + ' · ' + (daysUntil(c.event_date) >= 0 ? daysUntil(c.event_date) + ' days out' : 'past') : 'No date yet'} ${clientFlags(c)}</div></div></header>
