@@ -821,7 +821,8 @@ async function startAdmin() {
     const forClient = pick ? state.clients.find(c => c.id === pick) : null;
     const list = all.filter(x => (x.client_id || '') === pick);
     root.innerHTML = `<div class="wrap wide"><section class="panel glow" style="margin-top:16px"><header><div><div class="eyebrow">AI, powered by Google Gemini</div><h2 style="font-size:clamp(24px,4vw,34px)">Design studio</h2><div class="dim" style="margin-top:4px">Only you can use this. Snap a room, pick a look and see it set up. Send the ones you love to a client's portal for approval.</div></div></header>
-      <div class="actions" style="margin:12px 0"><label class="f" style="min-width:240px">Designing for<select id="stFor"><option value="">Venues and my own ideas</option>${state.clients.map(c => `<option value="${esc(c.id)}" ${c.id === pick ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label><button class="btn primary" id="stNew">${ICONS.spark} New design</button></div>
+      <div class="actions" style="margin:12px 0"><label class="f" style="min-width:240px">Designing for<select id="stFor"><option value="">Venues and my own ideas</option>${state.clients.map(c => `<option value="${esc(c.id)}" ${c.id === pick ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label><button class="btn primary" id="stNew">${ICONS.spark} New design</button><label class="btn" for="stUp" style="cursor:pointer">Upload a mockup</label><input type="file" id="stUp" accept="image/*" hidden></div>
+      <p class="dim" style="margin:0 0 12px;font-size:14px">Made a mockup on your free Design Board? Upload the saved picture here, open it and send it for approval.</p>
       ${list.length ? `<div class="idea-grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr))">${list.map(x => `<button class="idea" data-dz="${esc(x.id)}" aria-label="Open design"><img alt="" data-path="${esc(x.result_path)}">${x.shared ? '<span class="idea-tag">Sent for approval</span>' : ''}</button>`).join('')}</div>` : '<p class="empty">No designs here yet. Tap New design and snap a photo of the room.</p>'}
       </section></div>`;
     root.querySelectorAll('img[data-path]').forEach(async img => { try { img.src = await DB.pathUrl(img.dataset.path); } catch (e) {} });
@@ -830,6 +831,17 @@ async function startAdmin() {
       let insp = [];
       if (forClient) { try { insp = (await DB.list('files', forClient.id)).filter(f => f.tag === 'inspiration'); } catch (e) {} }
       openStudio({ clientId: forClient ? forClient.id : null, client: forClient, inspiration: insp, byAdmin: true, onSaved: drawStudio });
+    });
+    // Mockups from the toolkit Design Board come in as finished pictures (no AI call).
+    $('#stUp').addEventListener('change', async e => {
+      const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+      toast('Uploading your mockup…');
+      try {
+        const path = await DB.putImage(forClient ? forClient.id : 'studio', await shrinkPhoto(f));
+        const title = f.name.replace(/\.[a-z0-9]+$/i, '').replace(/\s*mockup$/i, '').trim() || 'Mockup';
+        const dz = await DB.insert('designs', { client_id: forClient ? forClient.id : null, title, room_path: path, result_path: path, brief: { source: 'design-board' }, created_by: 'mak', shared: false });
+        await drawStudio(); showDesign(dz, { byAdmin: true, onChange: drawStudio });
+      } catch (err) { toast(errMsg(err)); }
     });
     root.querySelectorAll('[data-dz]').forEach(b => b.addEventListener('click', () => showDesign(list.find(x => x.id === b.dataset.dz), { byAdmin: true, onChange: drawStudio })));
   }
