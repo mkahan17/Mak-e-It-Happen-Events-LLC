@@ -546,8 +546,26 @@ function renderClient(root, c, d, reload, preview) {
 }
 
 /* ---------- AI Design Studio (shared by Mak's admin and the client Resources tab) ---------- */
-const VIBES = ['Garden romantic', 'Modern black-tie', 'Classic elegant', 'Rustic chic', 'Boho', 'Glam', 'Minimal modern', 'Tropical', 'Western ranch', 'Corporate clean'];
-const ELEMENTS = ['Round guest tables', 'Long banquet tables', 'Sweetheart or head table', 'Ceremony arch', 'Aisle florals', 'Dance floor', 'Bar', 'Lounge seating', 'Ceiling draping', 'Uplighting', 'String lights', 'Candles', 'Tall centerpieces', 'Low centerpieces', 'Welcome sign area', 'Cake table', 'Photo backdrop'];
+// Any space: events, homes, offices and outdoor. Each kind has its own room picks, styles and ideas to include.
+const SPACES = {
+  event: { label: 'Event or venue', whatLabel: "What's the event", what: 'wedding reception', people: 'About how many guests',
+    picks: ['Wedding reception', 'Wedding ceremony', 'Rehearsal dinner', 'Birthday party', 'Baby shower', 'Bridal shower', 'Graduation party', 'Corporate event', 'Holiday party', 'Gala', 'Quinceañera', 'Anniversary party'],
+    styles: ['Classic elegant', 'Garden romantic', 'Modern black-tie', 'Rustic chic', 'Boho', 'Glam', 'Minimal modern', 'Whimsical', 'Vintage', 'Moody', 'Fairytale', 'Tropical', 'Coastal', 'Western ranch', 'Art deco', 'Mediterranean', 'Corporate clean'],
+    ideas: ['Round guest tables', 'Long banquet tables', 'Sweetheart or head table', 'Ceremony arch', 'Ceremony chairs', 'Aisle florals', 'Dance floor', 'Stage', 'Bar', 'Lounge seating', 'Ceiling draping', 'Chandeliers', 'Uplighting', 'String lights', 'Lanterns', 'Candles', 'Tall centerpieces', 'Low centerpieces', 'Greenery garland', 'Pampas grass', 'Flower wall', 'Balloon garland', 'Photo backdrop', 'Neon sign', 'Welcome sign', 'Escort card display', 'Cake table', 'Dessert table', 'Gift table', 'Linens and chargers', 'Rugs and pillows'] },
+  home: { label: 'Home', whatLabel: 'Which room', what: 'living room', people: '',
+    picks: ['Living room', 'Bedroom', 'Primary bedroom', 'Kitchen', 'Dining room', 'Bathroom', 'Home office', 'Nursery', 'Kids room', 'Entryway', 'Basement', 'Game room', 'Closet', 'Laundry room'],
+    styles: ['Modern', 'Contemporary', 'Transitional', 'Minimalist', 'Scandinavian', 'Japandi', 'Mid-century modern', 'Modern farmhouse', 'Coastal', 'Boho', 'Traditional', 'Industrial', 'French country', 'Mediterranean', 'Art deco', 'Luxury glam', 'Maximalist', 'Rustic', 'Biophilic', 'Cottagecore'],
+    ideas: ['New sofa', 'Sectional', 'Accent chairs', 'Coffee table', 'Area rug', 'Dining table and chairs', 'Bed and bedding', 'Upholstered headboard', 'Nightstands', 'Dresser', 'Desk and chair', 'Bookshelves', 'Built-ins', 'Kitchen island', 'Bar stools', 'Pendant lights', 'Chandelier', 'Floor lamps', 'Wall art', 'Gallery wall', 'Large mirror', 'Curtains', 'Plants', 'Throw pillows and blankets', 'Accent wall', 'New paint color', 'Wallpaper', 'Wood floors', 'Fireplace makeover', 'Open shelving', 'Backsplash', 'New cabinet color'] },
+  office: { label: 'Office or business', whatLabel: 'What kind of space', what: 'office', people: 'How many people use it',
+    picks: ['Private office', 'Open office', 'Conference room', 'Lobby or reception', 'Break room', 'Retail store', 'Restaurant or café', 'Salon or spa', 'Studio', 'Waiting room', 'Showroom'],
+    styles: ['Modern', 'Corporate clean', 'Minimalist', 'Scandinavian', 'Industrial', 'Mid-century modern', 'Warm contemporary', 'Luxury', 'Biophilic', 'Creative and colorful', 'Boutique', 'Japandi'],
+    ideas: ['Desks', 'Ergonomic chairs', 'Conference table', 'Reception desk', 'Lounge seating', 'Bookshelves', 'Storage cabinets', 'Pendant lights', 'Plants and living wall', 'Wall art', 'Logo wall', 'Glass partitions', 'Acoustic panels', 'Area rugs', 'Coffee station', 'Display shelving', 'Accent wall', 'Window shades', 'Phone booth or nook', 'Retail fixtures'] },
+  outdoor: { label: 'Outdoor', whatLabel: 'What is it', what: 'backyard', people: 'About how many people',
+    picks: ['Backyard', 'Patio', 'Deck', 'Front porch', 'Pool area', 'Garden', 'Rooftop', 'Courtyard', 'Lawn for an event'],
+    styles: ['Modern', 'Resort', 'Coastal', 'Mediterranean', 'Boho', 'Modern farmhouse', 'Tropical', 'Desert modern', 'English garden', 'Rustic', 'Garden romantic', 'Western ranch'],
+    ideas: ['Patio furniture', 'Outdoor sectional', 'Dining set', 'Fire pit', 'Pergola', 'Shade sail', 'Umbrella', 'String lights', 'Lanterns', 'Path lighting', 'Planters', 'Garden beds', 'Outdoor rug', 'Pool loungers', 'Outdoor kitchen', 'Bar area', 'Hedges and greenery', 'Tent', 'Lawn games', 'Outdoor ceremony setup'] },
+};
+const CHANGES = [['empty', 'Empty the room', 'Removes all the furniture and decor so you see the bare space as it really is'], ['keep', 'Just decorate', 'Keep the furniture that is there'], ['restyle', 'Restyle', 'New furniture and decor'], ['full', 'Full makeover', 'Walls, floors and lighting too']];
 const BRIEF_KEY = 'mak-studio-brief-v1';
 // Phone photos are huge; shrink to 1600px so uploads and designs are fast and cheap.
 function shrinkPhoto(file) {
@@ -563,43 +581,85 @@ function shrinkPhoto(file) {
     img.src = url;
   });
 }
-function openStudio({ clientId, client, inspiration = [], byAdmin, onSaved, title = '' }) {
+function openStudio({ clientId, client, inspiration = [], byAdmin, onSaved, title = '', startPath = '' }) {
   let saved = {}; try { saved = JSON.parse(localStorage.getItem(BRIEF_KEY) || '{}'); } catch (e) {}
-  const b = { event: (client && (client.event_type || client.package)) || saved.event || 'a wedding reception', vibe: saved.vibe || '', colors: saved.colors || '', elements: saved.elements || ['Round guest tables', 'Low centerpieces', 'Candles'], guests: (client && client.guests) || saved.guests || '', notes: '' };
+  const kind0 = client ? 'event' : (SPACES[saved.space] ? saved.space : 'event');
+  const b = { space: kind0, what: (client && (client.event_type || client.package)) || (saved.space === kind0 && saved.what) || SPACES[kind0].what,
+    styles: Array.isArray(saved.styles) ? saved.styles : (saved.vibe ? [saved.vibe] : []), colors: saved.colors || '', elements: Array.isArray(saved.elements) ? saved.elements : [],
+    guests: (client && client.guests) || '', change: saved.change || 'restyle', custom: Array.isArray(saved.custom) ? saved.custom : [] };
   let photo = null, refs = [];
-  const m = modal(`<header><div><div class="eyebrow">Design studio</div><h2>${client ? esc(firstName(client.name)) + '’s design' : 'New venue design'}</h2></div><button class="btn ghost sm" data-close>Close</button></header>
-    <div class="studio-step"><b>1. The room</b><span class="dim">Stand in a corner and capture as much of the space as you can.</span>
+  const m = modal(`<header><div><div class="eyebrow">Design studio</div><h2>${client ? esc(firstName(client.name)) + '’s design' : 'New design'}</h2></div><button class="btn ghost sm" data-close>Close</button></header>
+    <div class="studio-step"><b>1. The photo</b><span class="dim">Any room or space: a venue, a living room, an office, a backyard. Stand in a corner and capture as much of it as you can.</span>
       <img id="stPrev" class="st-prev" alt="" hidden>
       <label class="btn primary block" style="cursor:pointer">${ICONS.upload.replace('<svg', '<svg width="22" height="22"')} <span id="stPick">Take or choose a photo</span><input type="file" id="stFile" accept="image/*" hidden></label></div>
-    <div class="studio-step"><b>2. The look</b>
-      <div class="form-grid"><label class="f">What's the event<input type="text" id="stEvent" value="${esc(b.event)}" placeholder="wedding reception"></label><label class="f">About how many guests<input type="number" id="stGuests" value="${esc(b.guests)}" placeholder="120"></label></div>
-      <span class="f-label">Style</span><div class="chips" id="stVibe">${VIBES.map(v => `<button type="button" class="chip" aria-pressed="${b.vibe === v}">${esc(v)}</button>`).join('')}</div>
-      <label class="f">Colors<input type="text" id="stColors" value="${esc(b.colors)}" placeholder="sage green, ivory and gold"></label>
-      <span class="f-label">Include</span><div class="chips" id="stEls">${ELEMENTS.map(v => `<button type="button" class="chip" aria-pressed="${b.elements.includes(v)}">${esc(v)}</button>`).join('')}</div>
-      <label class="f">Anything else<textarea id="stNotes" placeholder="Pampas grass, gold chargers, no pink">${esc(b.notes)}</textarea></label>
+    <div class="studio-step"><b>2. The space</b>
+      <div class="chips" id="stKind">${Object.entries(SPACES).map(([k, s]) => `<button type="button" class="chip" data-k="${k}" aria-pressed="${k === b.space}">${esc(s.label)}</button>`).join('')}</div>
+      <div class="form-grid"><label class="f"><span id="stWhatL"></span><input type="text" id="stWhat" list="stWhatList" autocomplete="off"><datalist id="stWhatList"></datalist></label><label class="f" id="stPplL"><span id="stPplT"></span><input type="number" id="stGuests" min="0" value="${esc(b.guests)}"></label></div>
+      <span class="f-label">How much to change</span><div class="chips" id="stChange">${CHANGES.map(([k, l]) => `<button type="button" class="chip" data-c="${k}" aria-pressed="${k === b.change}">${esc(l)}</button>`).join('')}</div><span class="dim" id="stChangeD" style="font-size:14px"></span>
+      <label class="f"><span>Remove from the photo <span class="dim">(optional)</span></span><input type="text" id="stRemove" placeholder="the old couch, the boxes, the TV"></label></div>
+    <div class="studio-step" id="stLook"><b>3. The look</b>
+      <span class="f-label">Styles <span class="dim">· pick as many as you like</span></span><div class="chips" id="stVibe"></div>
+      <label class="f">Colors<input type="text" id="stColors" value="${esc(b.colors)}" placeholder="sage green, ivory and warm wood"></label>
+      <span class="f-label">Include <span class="dim">· tap ideas or add exactly what you want</span></span><div class="chips" id="stEls"></div>
+      <div class="actions" style="margin:0;flex-wrap:nowrap"><input type="text" id="stAddT" placeholder="e.g. green velvet sofa, gold chargers" style="flex:1;min-width:0"><button type="button" class="btn sm" id="stAdd">Add</button></div>
+      <label class="f">Anything else<textarea id="stNotes" placeholder="Keep the fireplace, lots of natural light, no pink"></textarea></label>
       ${inspiration.length ? `<span class="f-label">Use inspiration photos (up to 2)</span><div class="idea-grid" id="stRefs">${inspiration.slice(0, 12).map(f => `<button type="button" class="idea" data-ref="${esc(f.path)}" aria-pressed="false"><img alt="" data-path="${esc(f.path)}"></button>`).join('')}</div>` : ''}
     </div>
     <div class="actions"><button class="btn primary" id="stGo">${ICONS.spark} Design it</button></div>
     <p class="msg" id="stMsg" role="status"></p>`);
+  const q = s => m.querySelector(s), uniq = a => [...new Set(a)];
+  const chips = (list, on) => list.map(v => `<button type="button" class="chip" aria-pressed="${on.includes(v)}">${esc(v)}</button>`).join('');
+  const drawEls = () => { const s = SPACES[b.space]; q('#stEls').innerHTML = chips(uniq([...b.custom, ...b.elements, ...s.ideas]), b.elements); };
+  const drawKind = () => {
+    const s = SPACES[b.space];
+    m.querySelectorAll('#stKind .chip').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.k === b.space)));
+    q('#stWhatL').textContent = s.whatLabel; q('#stWhat').value = b.what; q('#stWhat').placeholder = s.what;
+    q('#stWhatList').innerHTML = s.picks.map(p => `<option value="${esc(p)}"></option>`).join('');
+    q('#stPplL').hidden = !s.people; q('#stPplT').textContent = s.people;
+    q('#stVibe').innerHTML = chips(uniq([...s.styles, ...b.styles]), b.styles);
+    q('#stChangeD').textContent = (CHANGES.find(c => c[0] === b.change) || CHANGES[2])[2] + '.';
+    q('#stLook').hidden = b.change === 'empty';
+    drawEls();
+  };
+  drawKind();
+  if (startPath) DB.pathUrl(startPath).then(u => { const pv = q('#stPrev'); pv.src = u; pv.hidden = false; q('#stPick').textContent = 'Use a different photo'; }).catch(() => {});
   m.querySelectorAll('img[data-path]').forEach(async img => { try { img.src = await DB.pathUrl(img.dataset.path); } catch (e) {} });
-  m.querySelector('#stVibe').addEventListener('click', e => { const c = e.target.closest('.chip'); if (!c) return; const on = c.getAttribute('aria-pressed') !== 'true'; m.querySelectorAll('#stVibe .chip').forEach(x => x.setAttribute('aria-pressed', 'false')); c.setAttribute('aria-pressed', String(on)); });
-  m.querySelector('#stEls').addEventListener('click', e => { const c = e.target.closest('.chip'); if (c) c.setAttribute('aria-pressed', String(c.getAttribute('aria-pressed') !== 'true')); });
-  const rf = m.querySelector('#stRefs');
+  q('#stKind').addEventListener('click', e => {
+    const c = e.target.closest('[data-k]'); if (!c || c.dataset.k === b.space) return;
+    const old = SPACES[b.space]; if (!b.what || b.what === old.what) b.what = SPACES[c.dataset.k].what;
+    b.space = c.dataset.k; const s = SPACES[b.space];
+    b.styles = b.styles.filter(x => s.styles.includes(x)); b.elements = b.elements.filter(x => b.custom.includes(x));
+    drawKind();
+  });
+  q('#stWhat').addEventListener('input', e => { b.what = e.target.value; });
+  q('#stGuests').addEventListener('input', e => { b.guests = e.target.value; });
+  q('#stChange').addEventListener('click', e => { const c = e.target.closest('[data-c]'); if (!c) return; b.change = c.dataset.c; m.querySelectorAll('#stChange .chip').forEach(x => x.setAttribute('aria-pressed', String(x === c))); drawKind(); });
+  const toggle = (arr, v) => arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v];
+  q('#stVibe').addEventListener('click', e => { const c = e.target.closest('.chip'); if (!c) return; b.styles = toggle(b.styles, c.textContent); c.setAttribute('aria-pressed', String(b.styles.includes(c.textContent))); });
+  q('#stEls').addEventListener('click', e => { const c = e.target.closest('.chip'); if (!c) return; b.elements = toggle(b.elements, c.textContent); c.setAttribute('aria-pressed', String(b.elements.includes(c.textContent))); });
+  const add = () => {
+    const v = q('#stAddT').value.trim().replace(/\s+/g, ' ').slice(0, 80); if (!v) return toast('Type what you want to include.');
+    b.custom = uniq([v, ...b.custom]).slice(0, 30); b.elements = uniq([...b.elements, v]); q('#stAddT').value = ''; drawEls();
+  };
+  q('#stAdd').addEventListener('click', add);
+  q('#stAddT').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); add(); } });
+  const rf = q('#stRefs');
   if (rf) rf.addEventListener('click', e => { const c = e.target.closest('[data-ref]'); if (!c) return; const on = c.getAttribute('aria-pressed') !== 'true'; if (on && refs.length >= 2) return toast('Pick up to 2 inspiration photos.'); c.setAttribute('aria-pressed', String(on)); refs = [...rf.querySelectorAll('[aria-pressed="true"]')].map(x => x.dataset.ref); });
-  m.querySelector('#stFile').addEventListener('change', async e => {
+  q('#stFile').addEventListener('change', async e => {
     const f = e.target.files[0]; if (!f) return;
-    try { photo = await shrinkPhoto(f); const pv = m.querySelector('#stPrev'); pv.src = URL.createObjectURL(photo); pv.hidden = false; m.querySelector('#stPick').textContent = 'Use a different photo'; }
+    try { photo = await shrinkPhoto(f); const pv = q('#stPrev'); pv.src = URL.createObjectURL(photo); pv.hidden = false; q('#stPick').textContent = 'Use a different photo'; }
     catch (err) { toast(errMsg(err)); }
   });
-  m.querySelector('#stGo').addEventListener('click', async e => {
-    if (!photo) return toast('Add a photo of the room first.');
-    const brief = { event: m.querySelector('#stEvent').value.trim(), guests: m.querySelector('#stGuests').value.trim(), vibe: (m.querySelector('#stVibe [aria-pressed="true"]') || {}).textContent || '', colors: m.querySelector('#stColors').value.trim(), elements: [...m.querySelectorAll('#stEls [aria-pressed="true"]')].map(x => x.textContent), notes: m.querySelector('#stNotes').value.trim() };
-    try { localStorage.setItem(BRIEF_KEY, JSON.stringify(Object.assign({}, brief, { notes: '' }))); } catch (err) {}
+  q('#stGo').addEventListener('click', async e => {
+    if (!photo && !startPath) return toast('Add a photo of the space first.');
+    const what = b.what.trim() || SPACES[b.space].what;
+    const brief = { space: b.space, what, event: what, guests: SPACES[b.space].people ? String(b.guests || '').trim() : '', styles: b.styles, vibe: b.styles.join(', '), colors: q('#stColors').value.trim(), elements: b.elements, change: b.change, remove: q('#stRemove').value.trim(), notes: q('#stNotes').value.trim() };
+    try { localStorage.setItem(BRIEF_KEY, JSON.stringify(Object.assign({}, brief, { notes: '', guests: '', remove: '', change: b.change === 'empty' ? 'restyle' : b.change, custom: b.custom }))); } catch (err) {}
     const btn = e.target.closest('button'), msg = m.querySelector('#stMsg'); btn.disabled = true;
     const t0 = Date.now(), tick = setInterval(() => { msg.textContent = `Designing your space… ${Math.round((Date.now() - t0) / 1000)}s (usually 10–40 seconds)`; }, 1000);
     try {
-      const room_path = await DB.putImage(clientId || 'studio', photo);
-      const design = await DB.design({ client_id: clientId, room_path, ref_paths: refs, brief, title: title || brief.vibe || 'Design' });
+      const room_path = photo ? await DB.putImage(clientId || 'studio', photo) : startPath;
+      const design = await DB.design({ client_id: clientId, room_path, ref_paths: refs, brief, title: title || (b.change === 'empty' ? 'Empty ' : '') + (b.change === 'empty' ? what : what.charAt(0).toUpperCase() + what.slice(1)) });
       clearInterval(tick); closeModal(); if (onSaved) onSaved(); showDesign(design, { byAdmin, onChange: onSaved });
     } catch (err) { clearInterval(tick); btn.disabled = false; msg.textContent = errMsg(err); msg.className = 'msg bad'; }
   });
@@ -612,8 +672,9 @@ async function showDesign(dz, { byAdmin, onChange }) {
     <div class="chips" role="tablist"><button class="chip" data-v="after" aria-pressed="true">Design</button><button class="chip" data-v="before" aria-pressed="false">Original photo</button></div>
     <img class="st-result" id="dzImg" alt="AI design of the room">
     <p class="dim" style="margin:0;font-size:14px">${esc([br.colors, (br.elements || []).join(', '), br.tweak && 'Change: ' + br.tweak].filter(Boolean).join(' · '))}</p>
-    <label class="f">Change something<input type="text" id="dzTweak" placeholder="Make the linens blush and add more candles"></label>
-    <div class="actions"><button class="btn primary" id="dzGo">${ICONS.spark} Make this change</button><a class="btn" id="dzOpen" target="_blank" rel="noopener">Open full size</a>
+    <label class="f">Change something<input type="text" id="dzTweak" placeholder="Remove the rug, make the sofa green, add more candles"></label>
+    <div class="chips" id="dzQuick"><button type="button" class="chip" data-t="Remove all the furniture, decor and clutter so the space is completely empty, like a real estate photo before move-in">Empty the room</button><button type="button" class="chip" data-t="Remove all clutter and personal items and tidy the space">Remove clutter</button><button type="button" class="chip" data-t="Make it brighter with more natural light">Brighter</button><button type="button" class="chip" data-t="Make it evening with warm, glowing lighting">Evening lighting</button></div>
+    <div class="actions"><button class="btn primary" id="dzGo">${ICONS.spark} Make this change</button><a class="btn" id="dzOpen" target="_blank" rel="noopener">Open full size</a>${byAdmin ? '<button class="btn" id="dzFresh">Redesign from this picture</button>' : ''}
 <button class="btn danger" id="dzDel">Delete</button></div>
     ${byAdmin ? `<div class="studio-step"><b>Send to a client for approval</b><span class="dim">It shows up under Review in their portal, and they get an email to approve it or ask for changes.</span>
       ${dz.client_id ? '' : `<label class="f">Client<select id="dzClient"><option value="">Choose a client</option></select></label>`}
@@ -624,6 +685,9 @@ async function showDesign(dz, { byAdmin, onChange }) {
   const urls = {};
   const show = async v => { m.querySelectorAll('[data-v]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.v === v))); const p = v === 'after' ? dz.result_path : dz.room_path; try { urls[p] = urls[p] || await DB.pathUrl(p); m.querySelector('#dzImg').src = urls[p]; m.querySelector('#dzOpen').href = urls[p]; } catch (e) {} };
   show('after');
+  const fresh = m.querySelector('#dzFresh');
+  if (fresh) fresh.addEventListener('click', () => { closeModal(); openStudio({ clientId: dz.client_id, client: null, byAdmin, onSaved: onChange, startPath: dz.result_path }); });
+  m.querySelector('#dzQuick').addEventListener('click', e => { const c = e.target.closest('[data-t]'); if (!c) return; m.querySelector('#dzTweak').value = c.dataset.t; m.querySelector('#dzGo').click(); });
   m.querySelectorAll('[data-v]').forEach(x => x.addEventListener('click', () => show(x.dataset.v)));
   m.querySelector('#dzGo').addEventListener('click', async e => {
     const tweak = m.querySelector('#dzTweak').value.trim(); if (!tweak) return toast('Type what you want changed.');
@@ -820,10 +884,10 @@ async function startAdmin() {
     const pick = state.studioFor ?? '';
     const forClient = pick ? state.clients.find(c => c.id === pick) : null;
     const list = all.filter(x => (x.client_id || '') === pick);
-    root.innerHTML = `<div class="wrap wide"><section class="panel glow" style="margin-top:16px"><header><div><div class="eyebrow">AI, powered by Google Gemini</div><h2 style="font-size:clamp(24px,4vw,34px)">Design studio</h2><div class="dim" style="margin-top:4px">Only you can use this. Snap a room, pick a look and see it set up. Send the ones you love to a client's portal for approval.</div></div></header>
-      <div class="actions" style="margin:12px 0"><label class="f" style="min-width:240px">Designing for<select id="stFor"><option value="">Venues and my own ideas</option>${state.clients.map(c => `<option value="${esc(c.id)}" ${c.id === pick ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label><button class="btn primary" id="stNew">${ICONS.spark} New design</button><label class="btn" for="stUp" style="cursor:pointer">Upload a mockup</label><input type="file" id="stUp" accept="image/*" hidden></div>
+    root.innerHTML = `<div class="wrap wide"><section class="panel glow" style="margin-top:16px"><header><div><div class="eyebrow">AI, powered by Google Gemini</div><h2 style="font-size:clamp(24px,4vw,34px)">Design studio</h2><div class="dim" style="margin-top:4px">Only you can use this. Snap any space (a venue, a home, an office, a backyard), pick the styles and see a photo-realistic redesign. Send the ones you love to a client's portal for approval.</div></div></header>
+      <div class="actions" style="margin:12px 0"><label class="f" style="min-width:240px">Designing for<select id="stFor"><option value="">My own projects (not a client)</option>${state.clients.map(c => `<option value="${esc(c.id)}" ${c.id === pick ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label><button class="btn primary" id="stNew">${ICONS.spark} New design</button><label class="btn" for="stUp" style="cursor:pointer">Upload a mockup</label><input type="file" id="stUp" accept="image/*" hidden></div>
       <p class="dim" style="margin:0 0 12px;font-size:14px">Made a mockup on your free Design Board? Upload the saved picture here, open it and send it for approval.</p>
-      ${list.length ? `<div class="idea-grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr))">${list.map(x => `<button class="idea" data-dz="${esc(x.id)}" aria-label="Open design"><img alt="" data-path="${esc(x.result_path)}">${x.shared ? '<span class="idea-tag">Sent for approval</span>' : ''}</button>`).join('')}</div>` : '<p class="empty">No designs here yet. Tap New design and snap a photo of the room.</p>'}
+      ${list.length ? `<div class="idea-grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr))">${list.map(x => `<button class="idea" data-dz="${esc(x.id)}" aria-label="Open design"><img alt="" data-path="${esc(x.result_path)}">${x.shared ? '<span class="idea-tag">Sent for approval</span>' : ''}</button>`).join('')}</div>` : '<p class="empty">No designs here yet. Tap New design and snap a photo of any space.</p>'}
       </section></div>`;
     root.querySelectorAll('img[data-path]').forEach(async img => { try { img.src = await DB.pathUrl(img.dataset.path); } catch (e) {} });
     $('#stFor').addEventListener('change', e => { state.studioFor = e.target.value; drawStudio(); });
