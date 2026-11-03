@@ -146,7 +146,19 @@ function buildPlan(clientId, pkg, eventDate, bookedOn, totalFee) {
 }
 
 /* ---------- data stores ---------- */
-const TABLES = ['clients', 'milestones', 'reviews', 'comments', 'payments', 'meetings', 'vendors', 'files', 'admin_notes'];
+const TABLES = ['clients', 'milestones', 'reviews', 'comments', 'payments', 'meetings', 'vendors', 'files', 'admin_notes', 'hub_items', 'client_links'];
+// Planning Hub starter list for sample mode (the live list comes from the hub_items table).
+const HUB_SAMPLE = [
+  ['tool', 'wedding', 'Website & RSVPs', 'Zola wedding website', 'https://www.zola.com/wedding-planning/website', 'Free website with RSVPs, your story, travel info and registry in one place.'],
+  ['tool', 'wedding', 'Registry', 'Zola registry', 'https://www.zola.com/wedding-registry', 'Gifts, experiences and cash funds on one list.'],
+  ['tool', 'wedding', 'Invitations', 'Minted', 'https://www.minted.com/wedding', 'Designer save-the-dates and invitations, with free guest addressing.'],
+  ['tool', 'wedding', 'Inspiration', 'Pinterest wedding ideas', 'https://www.pinterest.com/ideas/wedding/', 'Save looks you love, then share your board with Mak.'],
+  ['tool', 'wedding', 'Legal & after', 'Tarrant County marriage licenses', 'https://www.tarrantcountytx.gov/en/county-clerk/vital-records/marriage-licenses.html', 'In Texas the license is good for 90 days and has a 72-hour wait, so get it 1–2 months out.'],
+  ['vendor', 'all', 'Florist', 'Petal & Party Co. (sample)', '', 'Example vendor. Add your real preferred vendors from the admin page.'],
+  ['tip', 'wedding', null, 'Book hair, makeup and your trial', null, 'Good artists book 6+ months ahead. Schedule your trial near a fitting or engagement shoot so you see the full look.', 6],
+  ['tip', 'wedding', null, 'Order invitations and set up your registry', null, 'Invitations take 4–6 weeks to print and address. Registry links go on your website, never on the invitation.', 4],
+  ['tip', 'wedding', null, 'Mail invitations and get your marriage license', null, 'Invitations go out 6–8 weeks before. A Texas license is good for 90 days with a 72-hour wait, so get it this month.', 2],
+].map(([section, audience, category, title, url, note, months_out], i) => ({ section, audience, category, title, url, note, months_out: months_out ?? null, sort: i, active: true }));
 
 // Sample data in this browser, so the portal can be tried before Supabase is connected.
 const Demo = (() => {
@@ -177,6 +189,8 @@ const Demo = (() => {
         { id: uid(), client_id: id, category: 'Florist', name: 'Petal & Party Co.', contact: 'Jenna', phone: '817-555-0190', email: '', arrival: '12:00 PM' },
         { id: uid(), client_id: id, category: 'Catering', name: 'Devivo Bros', contact: 'Marco', phone: '817-555-0133', email: '', arrival: '3:00 PM' }],
       files: [], admin_notes: [],
+      hub_items: HUB_SAMPLE.map(x => Object.assign({ id: uid() }, x)),
+      client_links: [{ id: uid(), client_id: id, title: 'Our Pinterest board', url: 'https://www.pinterest.com/ideas/wedding/', note: 'Garden ceremony, soft greenery', added_by: 'client', created_at: new Date().toISOString() }],
     };
     write();
   }
@@ -195,7 +209,7 @@ const Demo = (() => {
     async list(table, clientId) {
       load();
       if (table === 'comments') { const ids = new Set(db.reviews.filter(r => !clientId || r.client_id === clientId).map(r => r.id)); return ok(db.comments.filter(c => ids.has(c.review_id))); }
-      return ok(db[table].filter(r => !clientId || (table === 'clients' ? r.id === clientId : r.client_id === clientId)));
+      return ok(db[table].filter(r => !clientId || table === 'hub_items' || (table === 'clients' ? r.id === clientId : r.client_id === clientId)));
     },
     async myClient() { load(); return ok(db.clients[0] || null); },
     async insert(table, row) { load(); const r = Object.assign({ id: uid(), created_at: new Date().toISOString() }, row); db[table].push(r); write(); return ok(r); },
@@ -213,10 +227,10 @@ const Demo = (() => {
       if (note) db.comments.push({ id: uid(), review_id: reviewId, author: 'client', body: note, created_at: new Date().toISOString() });
       write();
     },
-    async upload(clientId, file, by) {
+    async upload(clientId, file, by, tag) {
       if (file.size > 2 * 1048576) throw new Error('Sample mode only stores files under 2 MB. Real portal files can be up to 20 MB.');
       const data = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(file); });
-      return this.insert('files', { client_id: clientId, name: file.name, size: file.size, type: file.type, path: '', data_url: data, uploaded_by: by });
+      return this.insert('files', { client_id: clientId, name: file.name, size: file.size, type: file.type, path: '', data_url: data, uploaded_by: by, tag: tag || null });
     },
     async getNotes(clientId) { load(); const r = db.admin_notes.find(x => x.client_id === clientId); return r ? r.notes || '' : ''; },
     async saveNotes(clientId, notes) { load(); const r = db.admin_notes.find(x => x.client_id === clientId); if (r) r.notes = notes; else db.admin_notes.push({ client_id: clientId, notes }); write(); },
@@ -245,7 +259,7 @@ const Live = (() => {
     async list(table, clientId) {
       let q = sb.from(table).select('*');
       if (clientId && table === 'clients') q = q.eq('id', clientId);
-      else if (clientId && table !== 'comments') q = q.eq('client_id', clientId);
+      else if (clientId && table !== 'comments' && table !== 'hub_items') q = q.eq('client_id', clientId);
       return must(await q);
     },
     async myClient(email) { return (must(await sb.from('clients').select('*').eq('email', String(email || '').toLowerCase()).limit(1)) || [])[0] || null; },
@@ -254,11 +268,11 @@ const Live = (() => {
     async update(table, id, patch) { return must(await sb.from(table).update(patch).eq('id', id).select().single()); },
     async remove(table, id) { must(await sb.from(table).delete().eq('id', id)); },
     async respond(reviewId, decision, note) { must(await sb.rpc('respond_review', { p_review: reviewId, p_decision: decision, p_note: note || '' })); },
-    async upload(clientId, file, by) {
+    async upload(clientId, file, by, tag) {
       if (file.size > MAX_FILE) throw new Error(file.name + ' is over 20 MB.');
       const path = clientId + '/' + uid() + '-' + file.name.replace(/[^\w.\- ]+/g, '_');
       must(await sb.storage.from(BUCKET).upload(path, file, { contentType: file.type || 'application/octet-stream' }));
-      return this.insert('files', { client_id: clientId, name: file.name, size: file.size, type: file.type, path, uploaded_by: by });
+      return this.insert('files', Object.assign({ client_id: clientId, name: file.name, size: file.size, type: file.type, path, uploaded_by: by }, tag ? { tag } : {}));
     },
     async getNotes(clientId) { const r = must(await sb.from('admin_notes').select('notes').eq('client_id', clientId).maybeSingle()); return r ? r.notes || '' : ''; },
     async saveNotes(clientId, notes) { must(await sb.from('admin_notes').upsert({ client_id: clientId, notes, updated_at: new Date().toISOString() })); },
@@ -381,7 +395,9 @@ async function startClient() {
         return;
       }
       const [milestones, reviews, comments, payments, meetings, vendors, files] = await Promise.all(['milestones', 'reviews', 'comments', 'payments', 'meetings', 'vendors', 'files'].map(t => DB.list(t, client.id)));
-      renderClient(root, client, { milestones, reviews, comments, payments, meetings, vendors, files }, go, preview);
+      // The Planning Hub is extra: if its tables aren't set up yet, the rest of the portal still opens.
+      const [hub, links] = await Promise.all([DB.list('hub_items').catch(() => []), DB.list('client_links', client.id).catch(() => [])]);
+      renderClient(root, client, { milestones, reviews, comments, payments, meetings, vendors, files, hub, links }, go, preview);
     } catch (e) { root.innerHTML = `<div class="wrap"><p class="empty" style="padding:40px 0">Could not open your portal: ${esc(errMsg(e))}</p></div>`; }
   }
   go();
@@ -398,9 +414,11 @@ const ICONS = {
   mail: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.5 6.5 8.5 6.5 8.5-6.5"/></svg>',
   call: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4M12 13v4M10 15h4"/></svg>',
   upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>',
+  plan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg>',
+  link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>',
   star: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>',
 };
-const CLIENT_TABS = [['home', 'Home'], ['timeline', 'Timeline'], ['review', 'Review'], ['pay', 'Payments'], ['files', 'Files']];
+const CLIENT_TABS = [['home', 'Home'], ['timeline', 'Timeline'], ['plan', 'Plan'], ['review', 'Review'], ['pay', 'Payments'], ['files', 'Files']];
 let clientTab = (location.hash.replace('#', '') === 'payments' ? 'pay' : location.hash.replace('#', '')) || 'home';
 
 function renderClient(root, c, d, reload, preview) {
@@ -458,11 +476,32 @@ function renderClient(root, c, d, reload, preview) {
         <div class="section-title">Schedule</div>
         <div class="list">${[...d.payments].sort(byDate('due_date')).map(p => { const dd = p.due_date ? daysUntil(p.due_date) : null; return `<div class="row"><span class="grow"><b>${esc(p.label)}</b><span class="sub">${p.paid_on ? 'Paid ' + esc(fmtDate(p.paid_on)) : p.due_date ? 'Due ' + esc(fmtDate(p.due_date, { weekday: 'short', month: 'short', day: 'numeric' })) : ''}</span></span><span class="end"><b style="color:var(--ink)">${money(p.amount)}</b><br>${p.paid_on ? '<span class="pill ok">Paid</span>' : dd !== null && dd < 0 ? '<span class="pill red">Past due</span>' : dd !== null && dd <= 14 ? '<span class="pill amber">Due soon</span>' : '<span class="pill dim">Upcoming</span>'}</span></div>`; }).join('')}</div>
         ${howToPayHTML()}` : '<div class="section-title">&nbsp;</div><div class="list"><div class="row"><span class="grow muted">Your payment schedule will show here.</span></div></div>'}`,
+    plan: () => {
+      const items = (d.hub || []).filter(i => i.active !== false && (i.audience === 'all' || i.audience === audienceOf(c))).sort((a, b) => (a.sort || 0) - (b.sort || 0));
+      const vendors = items.filter(i => i.section === 'vendor'), tools = items.filter(i => i.section === 'tool');
+      const { now, next } = tipsFor(items.filter(i => i.section === 'tip'), days);
+      const groups = list => { const m = new Map(); list.forEach(i => { const k = i.category || 'More'; if (!m.has(k)) m.set(k, []); m.get(k).push(i); }); return [...m]; };
+      const linkRow = i => i.url ? `<a class="row with-icon" href="${esc(i.url)}" target="_blank" rel="noopener"><span class="ico">${ICONS.link}</span><span class="grow"><b>${esc(i.title)}</b>${i.note ? `<span class="sub">${esc(i.note)}</span>` : ''}</span><span class="chev"></span></a>`
+        : `<div class="row with-icon"><span class="ico">${ICONS.star}</span><span class="grow"><b>${esc(i.title)}</b>${i.note ? `<span class="sub">${esc(i.note)}</span>` : ''}</span></div>`;
+      const ideas = d.files.filter(f => f.tag === 'inspiration');
+      return `${title('Planning Hub', 'Mak’s favorite vendors, helpful websites and a place for your ideas.')}
+        ${now ? `<div class="section-title">Tip for right now</div><div class="tip-card"><b>${esc(now.title)}</b><p>${esc(now.note || '')}</p>${next ? `<span class="tip-next">Next up: ${esc(next.title)}</span>` : ''}</div>` : ''}
+        <div class="section-title">Mak’s preferred vendors</div>
+        ${vendors.length ? groups(vendors).map(([cat, list]) => `<div class="hub-cat">${esc(cat)}</div><div class="list">${list.map(linkRow).join('')}</div>`).join('') + '<p class="hub-note">Tell them Mak sent you. I only recommend people I trust to show up and do it right.</p>' : '<div class="list"><div class="row"><span class="grow muted">Mak is adding her favorite vendors here. Ask her anytime for a recommendation.</span></div></div>'}
+        ${tools.length ? `<div class="section-title">Helpful websites</div>${groups(tools).map(([cat, list]) => `<div class="hub-cat">${esc(cat)}</div><div class="list">${list.map(linkRow).join('')}</div>`).join('')}` : ''}
+        <div class="section-title">My saved links</div>
+        <div class="list">${d.links.map(l => `<div class="row with-icon"><span class="ico">${ICONS.link}</span><span class="grow">${l.url ? `<a href="${esc(l.url)}" target="_blank" rel="noopener"><b>${esc(l.title)}</b></a>` : `<b>${esc(l.title)}</b>`}${l.note ? `<span class="sub">${esc(l.note)}</span>` : ''}</span>${l.added_by === 'client' ? `<button class="btn sm ghost" data-ldel="${esc(l.id)}">Remove</button>` : ''}</div>`).join('') || '<div class="row"><span class="grow muted">Save your Pinterest board, your website, your registry or anything you want handy.</span></div>'}</div>
+        <form class="hub-add" id="addLink" novalidate><input type="text" name="title" placeholder="Name it (e.g. Our Pinterest board)" aria-label="Link name"><input type="url" name="url" placeholder="Paste the link" aria-label="Link"><input type="text" name="note" placeholder="Note (optional)" aria-label="Note"><button class="btn primary" type="submit">Save link</button></form>
+        <div class="section-title">Inspiration photos</div>
+        ${ideas.length ? `<div class="idea-grid">${ideas.sort(byDate('created_at')).reverse().map(f => `<button class="idea" data-idea="${esc(f.id)}" aria-label="${esc(f.name)}"><img alt="" data-src="${esc(f.id)}"></button>`).join('')}</div>` : ''}
+        <label class="btn block" style="cursor:pointer;margin-top:10px">${ICONS.upload.replace('<svg', '<svg width="22" height="22"')} Add inspiration photos<input type="file" id="ideaFile" multiple hidden accept="image/*"></label>
+        <p class="hub-note">Mak can see everything you save here, so it doubles as a way to show her your vision.</p>`;
+    },
     files: () => `${title('Files', 'Share photos, your guest list or anything else with Mak.')}
       <div class="section-title">&nbsp;</div>
       <label class="btn primary block" style="cursor:pointer">${ICONS.upload.replace('<svg', '<svg width="22" height="22"')} Upload a photo or file<input type="file" id="cfile" multiple hidden accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.csv,.txt"></label>
-      <div class="section-title">${d.files.length ? 'Shared files' : ''}</div>
-      ${d.files.length ? `<div class="list">${[...d.files].sort(byDate('created_at')).reverse().map(f => `<button class="row" data-file="${esc(f.id)}"><span class="grow"><b>${esc(f.name)}</b><span class="sub">From ${f.uploaded_by === 'client' ? 'you' : 'Mak'} · ${esc(fmtDate(f.created_at, { month: 'short', day: 'numeric' }))}${f.size ? ' · ' + esc(fmtSize(f.size)) : ''}</span></span><span class="chev"></span></button>`).join('')}</div>` : ''}`,
+      <div class="section-title">${d.files.some(f => f.tag !== 'inspiration') ? 'Shared files' : ''}</div>
+      ${d.files.some(f => f.tag !== 'inspiration') ? `<div class="list">${d.files.filter(f => f.tag !== 'inspiration').sort(byDate('created_at')).reverse().map(f => `<button class="row" data-file="${esc(f.id)}"><span class="grow"><b>${esc(f.name)}</b><span class="sub">From ${f.uploaded_by === 'client' ? 'you' : 'Mak'} · ${esc(fmtDate(f.created_at, { month: 'short', day: 'numeric' }))}${f.size ? ' · ' + esc(fmtSize(f.size)) : ''}</span></span><span class="chev"></span></button>`).join('')}</div>` : ''}`,
   };
 
   root.innerHTML = `<div class="wrap app">${banner}${screens[clientTab]()}</div>
@@ -477,6 +516,7 @@ function renderClient(root, c, d, reload, preview) {
   const pv = $('#pvPick'); if (pv) pv.addEventListener('change', () => { sessionStorage.setItem('mak-preview-client', pv.value); reload(); });
   root.querySelectorAll('[data-review]').forEach(b => b.addEventListener('click', () => preview ? toast('Preview only: your client approves this from their own login.') : openClientReview(d.reviews.find(r => r.id === b.dataset.review), c, d, reload)));
   root.querySelectorAll('[data-file]').forEach(b => b.addEventListener('click', () => openFile(d.files.find(f => f.id === b.dataset.file))));
+  if (clientTab === 'plan') wirePlan(root, c, d, reload, preview);
   const cf = $('#cfile');
   if (cf) cf.addEventListener('change', async e => {
     for (const file of [...e.target.files]) {
@@ -487,6 +527,49 @@ function renderClient(root, c, d, reload, preview) {
   });
 }
 
+const audienceOf = c => /wedding/i.test((c.package || '') + ' ' + (c.event_type || '')) ? 'wedding' : 'event';
+// Tips are tied to "months out". The current tip is the one whose window has opened most recently.
+function tipsFor(tips, days) {
+  if (!tips.length) return {};
+  const sorted = [...tips].sort((a, b) => (Number(b.months_out) || 0) - (Number(a.months_out) || 0));
+  if (days === null) return { now: sorted[0], next: sorted[1] };
+  if (days < 0) return {};
+  const left = days / 30.4;
+  const open = sorted.filter(t => (Number(t.months_out) || 0) >= left);
+  const now = open[open.length - 1] || null, next = sorted.find(t => (Number(t.months_out) || 0) < left && (!now || t !== now));
+  return { now: now || sorted[0], next: now ? next : sorted[1] };
+}
+function wirePlan(root, c, d, reload, preview) {
+  root.querySelectorAll('img[data-src]').forEach(async img => {
+    const f = d.files.find(x => x.id === img.dataset.src);
+    try { img.src = await DB.fileUrl(f); } catch (e) {}
+  });
+  root.querySelectorAll('[data-idea]').forEach(b => b.addEventListener('click', () => openFile(d.files.find(f => f.id === b.dataset.idea))));
+  const form = $('#addLink');
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    if (preview) return toast('Preview only: your client saves links from their own login.');
+    const f = new FormData(form), url = String(f.get('url') || '').trim(), t = String(f.get('title') || '').trim();
+    if (!t && !url) return toast('Add a name or paste a link.');
+    if (url && !/^https?:\/\//i.test(url)) return toast('Links start with https://');
+    try { await DB.insert('client_links', { client_id: c.id, title: t || url.replace(/^https?:\/\/(www\.)?/i, '').split('/')[0], url, note: String(f.get('note') || '').trim(), added_by: 'client' }); toast('Saved'); reload(); }
+    catch (err) { toast(errMsg(err)); }
+  });
+  root.querySelectorAll('[data-ldel]').forEach(b => b.addEventListener('click', async () => {
+    if (preview) return toast('Preview only.');
+    if (!b.dataset.armed) { b.dataset.armed = '1'; b.textContent = 'Tap again'; setTimeout(() => { if (b.isConnected) { delete b.dataset.armed; b.textContent = 'Remove'; } }, 3000); return; }
+    try { await DB.remove('client_links', b.dataset.ldel); reload(); } catch (err) { toast(errMsg(err)); }
+  }));
+  const fi = $('#ideaFile');
+  fi.addEventListener('change', async e => {
+    if (preview) { toast('Preview only.'); return; }
+    for (const file of [...e.target.files]) {
+      toast('Uploading ' + file.name + '…');
+      try { await DB.upload(c.id, file, 'client', 'inspiration'); } catch (err) { toast(errMsg(err)); }
+    }
+    toast('Added to your inspiration'); reload();
+  });
+}
 function openClientReview(r, c, d, reload) {
   if (!r) return;
   const comments = d.comments.filter(x => x.review_id === r.id);
@@ -544,10 +627,11 @@ function readInputs(el, attr = 'data-k') {
 
 async function startAdmin() {
   const root = $('#app'), head = $('#top');
-  const state = { clients: [], cur: null, tab: 'overview', data: null, q: '' };
+  const state = { clients: [], cur: null, tab: 'overview', data: null, q: '', view: 'clients', hub: [] };
   const drawHead = user => {
-    head.innerHTML = `<div class="wrap wide">${brandHTML('Client portal · Admin')}<div class="who">${CFG.TOOLKIT_URL ? `<a class="btn ghost sm" href="${esc(CFG.TOOLKIT_URL)}">Toolkit</a>` : ''}<a class="btn ghost sm" href="./">Client view</a>${user ? '<button class="btn ghost sm" id="out">Sign out</button>' : ''}</div></div>`;
+    head.innerHTML = `<div class="wrap wide">${brandHTML('Client portal · Admin')}<div class="who">${CFG.TOOLKIT_URL ? `<a class="btn ghost sm" href="${esc(CFG.TOOLKIT_URL)}">Toolkit</a>` : ''}<button class="btn ghost sm" id="hubBtn">Planning Hub</button><a class="btn ghost sm" href="./">Client view</a>${user ? '<button class="btn ghost sm" id="out">Sign out</button>' : ''}</div></div>`;
     const o = $('#out'); if (o) o.addEventListener('click', async () => { await DB.signOut(); go(); });
+    const hb = $('#hubBtn'); if (hb) { hb.hidden = !user; hb.addEventListener('click', () => { state.view = state.view === 'hub' ? 'clients' : 'hub'; hb.textContent = state.view === 'hub' ? 'Clients' : 'Planning Hub'; draw(); }); }
   };
   async function go() {
     const user = await DB.getUser();
@@ -567,12 +651,14 @@ async function startAdmin() {
   async function loadData() {
     const id = state.cur.id;
     const [milestones, reviews, comments, payments, meetings, vendors, files, notes] = await Promise.all(['milestones', 'reviews', 'comments', 'payments', 'meetings', 'vendors', 'files'].map(t => DB.list(t, id)).concat(DB.getNotes(id)));
-    state.data = { milestones, reviews, comments: comments.filter(cm => reviews.some(r => r.id === cm.review_id)), payments, meetings, vendors, files, notes };
+    const links = await DB.list('client_links', id).catch(() => []);
+    state.data = { milestones, reviews, comments: comments.filter(cm => reviews.some(r => r.id === cm.review_id)), payments, meetings, vendors, files, notes, links };
   }
   function clientFlags(c) {
     return c.id === (state.cur && state.cur.id) && state.data ? [state.data.reviews.some(r => r.status === 'changes') && '<span class="pill red">Changes requested</span>', paymentAlerts(state.data.payments).some(x => x.d < 0) && '<span class="pill red">Payment past due</span>'].filter(Boolean).join(' ') : '';
   }
   function draw() {
+    if (state.view === 'hub') return drawHub();
     const ql = state.q.toLowerCase();
     const list = state.clients.filter(c => !ql || [c.name, c.partner, c.email, c.venue].some(v => String(v || '').toLowerCase().includes(ql)));
     root.innerHTML = `<div class="wrap wide">
@@ -589,6 +675,35 @@ async function startAdmin() {
     root.querySelectorAll('[data-c]').forEach(b => b.addEventListener('click', async () => { state.cur = state.clients.find(c => c.id === b.dataset.c); state.tab = 'overview'; await loadData(); draw(); }));
     const rd = $('#resetDemo'); if (rd) rd.addEventListener('click', () => { Demo.resetSample(); state.cur = null; loadClients(); });
     if (state.cur) wireDetail();
+  }
+  // Planning Hub: one list Mak keeps for every client. Clients see the items for their event type.
+  const HUB_SECTIONS = [['vendor', 'Your preferred vendors', 'Shows first. Add the vendors you refer (and earn your 10% on).'], ['tool', 'Helpful websites', 'Websites and tools grouped by category.'], ['tip', 'Tips by months out', 'Each client sees the tip for where they are in planning. "Months out" = when it starts showing.']];
+  const HUB_FIELDS = s => [['title', s === 'tip' ? 'Tip headline' : 'Name', 'text'], ...(s === 'tip' ? [['months_out', 'Months out', 'number']] : [['category', 'Category', 'text'], ['url', 'Link (https://)', 'url']]), ['note', s === 'tip' ? 'Tip' : 'Short note for clients', 'text'], ['audience', 'Who sees it', 'select', [['all', 'Everyone'], ['wedding', 'Weddings'], ['event', 'Other events']]], ['sort', 'Order', 'number'], ['active', 'Showing', 'check']];
+  async function drawHub() {
+    try { state.hub = await DB.list('hub_items'); }
+    catch (e) { root.innerHTML = `<div class="wrap wide"><section class="panel" style="margin-top:16px"><p class="empty">The Planning Hub isn't set up in the database yet (${esc(errMsg(e))}).</p></section></div>`; return; }
+    root.innerHTML = `<div class="wrap wide"><section class="panel glow" style="margin-top:16px"><header><div><div class="eyebrow">Every client</div><h2 style="font-size:clamp(24px,4vw,34px)">Planning Hub</h2><div class="dim" style="margin-top:4px">What shows on the Plan tab in your clients' portals.</div></div></header>
+      ${HUB_SECTIONS.map(([s, label, help]) => { const rows = state.hub.filter(i => i.section === s).sort((a, b) => (a.sort || 0) - (b.sort || 0)); return `<h3 style="margin:22px 0 4px">${esc(label)} <span class="dim" style="font-size:14px;font-weight:500">${rows.length}</span></h3><p class="dim" style="margin:0 0 10px;font-size:14px">${esc(help)}</p>
+        <div class="erows">${rows.map(r => `<div class="erow" data-hrow="${esc(r.id)}">${HUB_FIELDS(s).map(f => inputHTML(f, r[f[0]], 'data-f')).join('')}<div class="actions"><button class="btn sm primary" data-hsave>Save</button><button class="btn sm danger" data-hdel>Delete</button></div></div>`).join('') || '<p class="empty">Nothing here yet.</p>'}</div>
+        <div class="actions" style="margin-top:10px"><button class="btn" data-hadd="${s}">Add ${s === 'vendor' ? 'a vendor' : s === 'tool' ? 'a website' : 'a tip'}</button></div>`; }).join('')}
+      </section></div>`;
+    root.querySelectorAll('[data-hrow]').forEach(row => {
+      row.querySelector('[data-hsave]').addEventListener('click', async () => {
+        const patch = readInputs(row, 'data-f');
+        if (patch.url && !/^https?:\/\//i.test(patch.url)) return toast('Links start with https://');
+        try { await DB.update('hub_items', row.dataset.hrow, patch); toast('Saved'); drawHub(); } catch (e) { toast(errMsg(e)); }
+      });
+      const del = row.querySelector('[data-hdel]');
+      del.addEventListener('click', async () => {
+        if (!del.dataset.armed) { del.dataset.armed = '1'; del.textContent = 'Tap again'; setTimeout(() => { if (del.isConnected) { delete del.dataset.armed; del.textContent = 'Delete'; } }, 3000); return; }
+        try { await DB.remove('hub_items', row.dataset.hrow); drawHub(); } catch (e) { toast(errMsg(e)); }
+      });
+    });
+    root.querySelectorAll('[data-hadd]').forEach(b => b.addEventListener('click', async () => {
+      const s = b.dataset.hadd, max = Math.max(0, ...state.hub.filter(i => i.section === s).map(i => i.sort || 0));
+      try { await DB.insert('hub_items', { section: s, audience: s === 'vendor' ? 'all' : 'wedding', category: s === 'vendor' ? 'Florist' : s === 'tool' ? 'Planning' : null, title: s === 'vendor' ? 'New vendor' : s === 'tool' ? 'New website' : 'New tip', url: '', note: '', months_out: s === 'tip' ? 3 : null, sort: max + 1, active: true }); drawHub(); }
+      catch (e) { toast(errMsg(e)); }
+    }));
   }
   const TABS = [['overview', 'Overview'], ['timeline', 'Timeline'], ['reviews', 'For review'], ['payments', 'Payments'], ['meetings', 'Meetings'], ['vendors', 'Vendors'], ['files', 'Files']];
   function detailHTML() {
@@ -607,7 +722,9 @@ async function startAdmin() {
       meetings: () => crudHTML('meetings', [...d.meetings].sort(byDate('starts_at'))),
       vendors: () => crudHTML('vendors', d.vendors),
       files: () => `<div class="actions" style="margin-bottom:12px"><label class="btn primary" style="cursor:pointer">Upload files<input type="file" id="afile" multiple hidden></label><span class="dim" style="font-size:13px">Photos, contracts, PDFs. Your client sees everything here.</span></div>
-        <ul class="mini">${[...d.files].sort(byDate('created_at')).reverse().map(f => `<li style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="min-width:0"><b style="overflow-wrap:anywhere">${esc(f.name)}</b><span>${f.uploaded_by === 'client' ? 'From client' : 'From you'} · ${esc(fmtDate(f.created_at, { month: 'short', day: 'numeric' }))}${f.size ? ' · ' + esc(fmtSize(f.size)) : ''}</span></span><span class="actions"><button class="btn sm" data-fo="${esc(f.id)}">Open</button><button class="btn sm danger" data-fd="${esc(f.id)}">Delete</button></span></li>`).join('') || '<p class="empty">No files yet.</p>'}</ul>`,
+        <ul class="mini">${[...d.files].sort(byDate('created_at')).reverse().map(f => `<li style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="min-width:0"><b style="overflow-wrap:anywhere">${esc(f.name)}</b><span>${f.tag === 'inspiration' ? 'Inspiration photo · ' : ''}${f.uploaded_by === 'client' ? 'From client' : 'From you'} · ${esc(fmtDate(f.created_at, { month: 'short', day: 'numeric' }))}${f.size ? ' · ' + esc(fmtSize(f.size)) : ''}</span></span><span class="actions"><button class="btn sm" data-fo="${esc(f.id)}">Open</button><button class="btn sm danger" data-fd="${esc(f.id)}">Delete</button></span></li>`).join('') || '<p class="empty">No files yet.</p>'}</ul>
+        <h3 style="margin:22px 0 8px">Their saved links</h3>
+        <ul class="mini">${(d.links || []).map(l => `<li><b style="overflow-wrap:anywhere">${l.url ? `<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.title)}</a>` : esc(l.title)}</b><span>${esc(l.note || '')}${l.note ? ' · ' : ''}${esc(fmtDate(l.created_at, { month: 'short', day: 'numeric' }))}</span></li>`).join('') || '<p class="empty">They haven\'t saved any links yet. They add them on the Plan tab.</p>'}</ul>`,
     };
     return `<section class="panel glow"><header><div><div class="eyebrow">${esc(c.package || '')}</div><h2 style="font-size:clamp(24px,4vw,34px)">${esc(c.name)}${c.partner ? ' & ' + esc(c.partner) : ''}</h2>
       <div class="dim" style="margin-top:4px">${c.event_date ? esc(fmtDate(c.event_date, { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })) + ' · ' + (daysUntil(c.event_date) >= 0 ? daysUntil(c.event_date) + ' days out' : 'past') : 'No date yet'} ${clientFlags(c)}</div></div></header>
