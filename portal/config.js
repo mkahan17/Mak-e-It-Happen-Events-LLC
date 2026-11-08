@@ -6,7 +6,7 @@ window.PORTAL_CONFIG = {
 
   BUSINESS: 'MAK(e) It Happen Moments',
   PHONE: '817-458-8699',
-  EMAIL: 'makeithappenevents.dfw@gmail.com',
+  EMAIL: 'hello@makeithappenmoments.com',
 
   // How clients pay you. Leave a value blank to hide that option.
   // Blank until the LLC's business bank account and Venmo are set up (after the EIN arrives).
@@ -16,7 +16,7 @@ window.PORTAL_CONFIG = {
 
   // "Book a call" button. Swap in your Google booking page link when it's ready.
   BOOK_CALL_URL: 'https://calendar.google.com/calendar/appointments/schedules/AcZssZ3nmdGiS3_OdkQ5Wr7W_3gdbD8kR8ORMGcqXQGPZPwvhzD59j_BwQnw7PRMaL_du3wX9Ova3kJn',
-  SITE_URL: 'https://mkahan17.github.io/Mak-e-It-Happen-Events-LLC/',
+  SITE_URL: 'https://makeithappenmoments.com/',
   REVIEW_URL: 'https://g.page/r/CY07g4Axvu8hEBM/review',  // Google Business review page
   TOOLKIT_URL: 'https://claude.ai/artifact/MoGf8GU53ZkJKmgojBSJri',
 };
