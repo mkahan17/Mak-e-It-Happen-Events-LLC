@@ -6,7 +6,7 @@ window.PORTAL_CONFIG = {
 
   BUSINESS: 'MAK(e) It Happen Moments',
   PHONE: '817-458-8699',
-  EMAIL: 'makeithappenevents.dfw@gmail.com',
+  EMAIL: 'hello@makeithappenmoments.com',
 
   // How clients pay you. Leave a value blank to hide that option.
   // Blank until the LLC's business bank account and Venmo are set up (after the EIN arrives).
