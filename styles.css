@@ -290,7 +290,7 @@ section.slim { padding: clamp(36px, 5vw, 56px) 0; }
 @media (prefers-reduced-motion: reduce) { .drop-btn::after { transition: none; } }
 
 /* Hero photo: centered on the candlelit table. */
-.hero img { object-position: 78% 50%; }
-@media (min-width: 900px) { .hero img { transform: scale(1.1); transform-origin: 80% 50%; } }
+.hero img { object-position: 88% 50%; }
+@media (min-width: 900px) { .hero img { transform: scale(1.04); transform-origin: 100% 50%; } }
 .hero::after { background: linear-gradient(90deg, rgba(0,0,0,.72) 0%, rgba(0,0,0,.45) 50%, rgba(0,0,0,.18) 100%), linear-gradient(180deg, rgba(0,0,0,0) 45%, rgba(0,0,0,.55) 100%); }
 .hero { overflow: hidden; }
