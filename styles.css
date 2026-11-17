@@ -294,3 +294,8 @@ section.slim { padding: clamp(36px, 5vw, 56px) 0; }
 @media (min-width: 900px) { .hero img { transform: scale(1.04); transform-origin: 100% 50%; } }
 .hero::after { background: linear-gradient(90deg, rgba(0,0,0,.72) 0%, rgba(0,0,0,.45) 50%, rgba(0,0,0,.18) 100%), linear-gradient(180deg, rgba(0,0,0,0) 45%, rgba(0,0,0,.55) 100%); }
 .hero { overflow: hidden; }
+
+/* Footer: four columns (adds Wedding areas). */
+.foot .cols { grid-template-columns: 1.4fr 1fr 1fr 1fr; }
+@media (max-width: 960px) { .foot .cols { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .foot .cols { grid-template-columns: 1fr; } }
