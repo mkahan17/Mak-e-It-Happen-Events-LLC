@@ -1,0 +1,6 @@
+# Cloudflare Pages response headers.
+# Phones only offer "Add to Contacts" when the card is sent as a vCard.
+/mak.vcf
+  Content-Type: text/vcard; charset=utf-8
+  Content-Disposition: inline; filename="Mak-Kahan.vcf"
+  Cache-Control: public, max-age=300

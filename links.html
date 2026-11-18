@@ -61,6 +61,8 @@
   .contact { margin:30px 0 0; font-size:14px; color:var(--soft); display:flex; flex-wrap:wrap; justify-content:center; gap:6px 18px; }
   .contact a { text-decoration:none; }
   .contact a:hover { color:var(--tq); }
+  .tip { margin:10px 2px 0; font-size:13px; line-height:1.45; color:var(--soft); border-left:2px solid var(--tq); padding:2px 0 2px 12px; text-align:left; }
+  .tip b { color:var(--paper); font-weight:500; }
   .fine { margin:26px 0 0; font-size:12px; color:var(--muted); text-wrap:balance; }
   .fine a { text-decoration:none; }
   .fine a:hover { color:var(--tq); }
@@ -102,9 +104,10 @@
 
   <p class="label">Stay in touch</p>
   <ul class="links">
-    <li><a class="lk" href="mak.vcf" download="Mak Kahan - MAK(e) It Happen Moments.vcf">
+    <li><a class="lk" id="save-contact" href="/mak.vcf">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c.6-3.6 3.4-6 7-6s6.4 2.4 7 6"/></svg>
-      <span>Save my contact</span></a></li>
+      <span>Save my contact</span></a>
+      <p class="tip" id="contact-tip" hidden>This app's browser can't save contacts. Tap <b>•••</b> at the top, choose <b>Open in browser</b>, then tap Save my contact again.</p></li>
     <li><a class="lk" href="https://g.page/r/CY07g4Axvu8hEBM/review" rel="noopener">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3.8 2.5 5.1 5.6.8-4 4 .9 5.6-5-2.7-5 2.7.9-5.6-4-4 5.6-.8z"/></svg>
       <span>Leave a Google review</span></a></li>
@@ -116,5 +119,19 @@
   <p class="contact"><a href="tel:+18174588699">817-458-8699</a><a href="mailto:hello@makeithappenmoments.com">hello@makeithappenmoments.com</a></p>
   <p class="fine">© 2026 MAK(e) It Happen Moments, LLC · Serving Dallas–Fort Worth · <a href="privacy-policy.pdf">Privacy</a></p>
 </main>
+<script>
+  /* Instagram, TikTok and Facebook open links in their own browser, which can't hand a contact card to the phone's Contacts app. */
+  (function () {
+    var ua = navigator.userAgent || "";
+    if (!/Instagram|FBAN|FBAV|FB_IAB|FBIOS|TikTok|musical_ly|Bytedance|BytedanceWebview|Snapchat|LinkedInApp/i.test(ua)) return;
+    var a = document.getElementById("save-contact"), tip = document.getElementById("contact-tip");
+    if (!a || !tip) return;
+    if (/Android/i.test(ua)) {
+      /* On Android, send the card straight to Chrome, which passes it to Contacts. */
+      a.href = "intent://makeithappenmoments.com/mak.vcf#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=https%3A%2F%2Fmakeithappenmoments.com%2Fmak.vcf;end";
+    }
+    a.addEventListener("click", function () { tip.hidden = false; });
+  })();
+</script>
 </body>
 </html>
